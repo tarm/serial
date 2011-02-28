@@ -23,16 +23,6 @@ func OpenPort(name string, baud int) (f *os.File, err os.Error) {
 	if err != nil {
 		return
 	}
-	fmt.Println("Tweaking", name)
-        r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
-                uintptr(f.Fd()),
-                uintptr(syscall.F_SETFL),
-                uintptr(0))
-        if e != 0 || r1 != 0 {
-                s := fmt.Sprint("Clearing NONBLOCK syscall error:", e, r1)
-		f.Close()
-		return nil, SError{s}
-        }
 	
 	fd := C.int(f.Fd())
 
@@ -52,11 +42,30 @@ func OpenPort(name string, baud int) (f *os.File, err os.Error) {
 		f.Close()
 		return nil, err
 	}
+
+	// Select local mode
+	st.c_cflag |= (C.CLOCAL | C.CREAD)
+
+	// Select raw mode
+	st.c_lflag &= ^C.tcflag_t(C.ICANON|C.ECHO|C.ECHOE|C.ISIG)
+	st.c_oflag &= ^C.tcflag_t(C.OPOST)
+
 	_, err = C.tcsetattr(fd, C.TCSANOW, &st)
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
+
+	fmt.Println("Tweaking", name)
+        r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
+                uintptr(f.Fd()),
+                uintptr(syscall.F_SETFL),
+                uintptr(0))
+        if e != 0 || r1 != 0 {
+                s := fmt.Sprint("Clearing NONBLOCK syscall error:", e, r1)
+		f.Close()
+		return nil, SError{s}
+        }
 
 	/*
 	r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
