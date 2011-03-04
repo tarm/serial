@@ -1,6 +1,7 @@
 package serial
 
 // #include <termios.h>
+// #include <unistd.h>
 import "C"
 
 import (
@@ -25,6 +26,10 @@ func OpenPort(name string, baud int) (f *os.File, err os.Error) {
 	}
 
 	fd := C.int(f.Fd())
+	if C.isatty(fd) != 1 {
+		f.Close()
+		return nil, SError{"File is not a tty"}
+	}
 
 	var st C.struct_termios
 	_, err = C.tcgetattr(fd, &st)
