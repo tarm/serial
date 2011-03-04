@@ -37,12 +37,23 @@ func OpenPort(name string, baud int) (f *os.File, err os.Error) {
 		f.Close()
 		return nil, err
 	}
-	_, err = C.cfsetispeed(&st, C.B115200)
+	var speed C.speed_t
+	switch baud {
+	case 115200:
+		speed = C.B115200
+	case 9600:
+		speed = C.B9600
+	default:
+		f.Close()
+		return nil, SError{fmt.Sprintf("Unknown baud rate %v", baud)}
+	}
+
+	_, err = C.cfsetispeed(&st, speed)
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
-	_, err = C.cfsetospeed(&st, C.B115200)
+	_, err = C.cfsetospeed(&st, speed)
 	if err != nil {
 		f.Close()
 		return nil, err
