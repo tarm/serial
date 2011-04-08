@@ -1,6 +1,7 @@
 package serial
 
 // #include <windows.h>
+// #include "serial.h"
 import "C"
 import (
 	"os"
@@ -25,10 +26,12 @@ func OpenPort(name string, baud int) (*os.File, os.Error) {
 		return nil, err
 	}
 	*/
-	params.BaudRate = C.DWORD(baud)
-	params.ByteSize = 8
-	params.StopBits = C.ONESTOPBIT
-	params.Parity   = C.NOPARITY
+	params.BaudRate      = C.DWORD(baud)
+	params.ByteSize      = 8
+	params.StopBits      = C.ONESTOPBIT
+	params.Parity        = C.NOPARITY
+	C.NullifyParams(&params)
+
 	fmt.Println(params)
 
 	if ok, err := C.SetCommState(*handle, &params); ok == C.FALSE {
