@@ -6,6 +6,7 @@ import "C"
 
 import (
 	"os"
+	"io"
 	"fmt"
 	"syscall"
 	//"unsafe"
@@ -19,7 +20,7 @@ func (e SError) String() string {
 	return e.msg
 }
 
-func OpenPort(name string, baud int) (f *os.File, err os.Error) {
+func OpenPort(name string, baud int) (f io.ReadWriteCloser, err os.Error) {
 	f, err = os.Open(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
 	if err != nil {
 		return
