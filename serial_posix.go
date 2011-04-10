@@ -20,8 +20,8 @@ func (e SError) String() string {
 	return e.msg
 }
 
-func OpenPort(name string, baud int) (f io.ReadWriteCloser, err os.Error) {
-	f, err = os.Open(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
+func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
+	f, err := os.Open(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
 	if err != nil {
 		return
 	}
@@ -96,5 +96,5 @@ func OpenPort(name string, baud int) (f io.ReadWriteCloser, err os.Error) {
 		}
 	*/
 
-	return
+	return f, nil
 }
