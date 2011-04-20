@@ -27,14 +27,14 @@ func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 	handle = hp(unsafe.Pointer(&fd))
 	var params C.struct__DCB
 	params.DCBlength = C.DWORD(unsafe.Sizeof(params))
-	
+
 	params.XonLim = 0
 	params.XoffLim = 0
-	
-	params.BaudRate      = C.DWORD(baud)
-	params.ByteSize      = 8
-	params.StopBits      = C.ONESTOPBIT
-	params.Parity        = C.NOPARITY
+
+	params.BaudRate = C.DWORD(baud)
+	params.ByteSize = 8
+	params.StopBits = C.ONESTOPBIT
+	params.Parity = C.NOPARITY
 
 	//fmt.Printf("%#v %v\n", params, params)
 
@@ -48,7 +48,7 @@ func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 		f.Close()
 		return nil, err
 	}
-	
+
 	var timeouts C.struct__COMMTIMEOUTS
 	const DWORDMAX = 1<<32 - 1
 	timeouts.ReadIntervalTimeout = DWORDMAX

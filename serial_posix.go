@@ -87,15 +87,15 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	}
 
 	/*
-		r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
-	                uintptr(f.Fd()),
-	                uintptr(0x80045402), // IOSSIOSPEED
-	                uintptr(unsafe.Pointer(&baud)));
-	        if e != 0 || r1 != 0 {
-	                s := fmt.Sprint("Baudrate syscall error:", e, r1)
-			f.Close()
-			return nil, SError{s}
-		}
+			r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
+		                uintptr(f.Fd()),
+		                uintptr(0x80045402), // IOSSIOSPEED
+		                uintptr(unsafe.Pointer(&baud)));
+		        if e != 0 || r1 != 0 {
+		                s := fmt.Sprint("Baudrate syscall error:", e, r1)
+				f.Close()
+				return nil, SError{s}
+			}
 	*/
 
 	return f, nil
