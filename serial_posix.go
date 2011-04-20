@@ -42,6 +42,8 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	switch baud {
 	case 115200:
 		speed = C.B115200
+	case 19200:
+		speed = C.B19200
 	case 9600:
 		speed = C.B9600
 	default:
@@ -73,7 +75,7 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 		return nil, err
 	}
 
-	fmt.Println("Tweaking", name)
+	//fmt.Println("Tweaking", name)
 	r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
 		uintptr(f.Fd()),
 		uintptr(syscall.F_SETFL),
