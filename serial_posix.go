@@ -21,7 +21,7 @@ func (e SError) String() string {
 }
 
 func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
-	f, err := os.Open(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
 	if err != nil {
 		return
 	}
