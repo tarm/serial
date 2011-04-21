@@ -39,6 +39,14 @@ var waitCommEvent uint32
 var getOverlappedResult uint32
 var createEvent uint32
 
+func loadDll(lib uint32, name string) uint32 {
+	addr, err := syscall.GetProcAddress(lib, name)
+	if err != 0 {
+		panic(name + " " + syscall.Errstr(err))
+	}
+	return addr
+}
+
 func init() {
 	k32, err := syscall.LoadLibrary("kernel32.dll")
 	if err != 0 {
@@ -46,30 +54,12 @@ func init() {
 	}
 	defer syscall.FreeLibrary(k32)
 
-	setCommState, err = syscall.GetProcAddress(k32, "SetCommState")
-	if err != 0 {
-		panic("GetProcAddress "+ syscall.Errstr(err))
-	}
-	setCommTimeouts, err = syscall.GetProcAddress(k32, "SetCommTimeouts")
-	if err != 0 {
-		panic("SetCommTimeouts "+ syscall.Errstr(err))
-	}
-	setCommMask, err = syscall.GetProcAddress(k32, "SetCommMask")
-	if err != 0 {
-		panic("SetCommEvent "+ syscall.Errstr(err))
-	}
-	waitCommEvent, err = syscall.GetProcAddress(k32, "WaitCommEvent")
-	if err != 0 {
-		panic("WaitCommEvent "+ syscall.Errstr(err))
-	}
-	getOverlappedResult, err = syscall.GetProcAddress(k32, "GetOverlappedResult")
-	if err != 0 {
-		panic("GetOverlappedResult "+ syscall.Errstr(err))
-	}
-	createEvent, err = syscall.GetProcAddress(k32, "CreateEvent")
-	if err != 0 {
-		panic("CreateEvent "+ syscall.Errstr(err))
-	}
+	setCommState        = loadDll(k32, "SetCommState")
+	setCommTimeouts     = loadDll(k32, "SetCommTimeouts")
+	setCommMask         = loadDll(k32, "SetCommMask")
+	waitCommEvent       = loadDll(k32, "WaitCommEvent")
+	getOverlappedResult = loadDll(k32, "GetOverlappedResult")
+	createEvent         = loadDll(k32, "CreateEvent")
 }
 
 const FILE_FLAGS_OVERLAPPED = 0x40000000
