@@ -1,12 +1,11 @@
 package serial
 
-// #include <windows.h>
-import "C"
 import (
 	"os"
 	"io"
-	"fmt"
+	//"fmt"
 	"unsafe"
+	"syscall"
 )
 
 type serialPort struct {
@@ -15,53 +14,116 @@ type serialPort struct {
 
 const EV_RXCHAR = 0x0001
 
+type structDCB struct {
+	DCBlength, BaudRate uint32
+	flags [4]byte
+	wReserved, XonLim, XoffLim uint16
+	ByteSize, Parity, StopBits byte
+	XonChar, XoffChar, ErrorChar, EofChar, EvtChar byte
+	wReserved1 uint16
+}
+
+type structTimeouts struct {
+	ReadIntervalTimeout uint32
+	ReadTotalTimeoutMultiplier uint32
+	ReadTotalTimeoutConstant uint32
+	WriteTotalTimeoutMultiplier uint32
+	WriteTotalTimeoutConstant uint32
+}
+
+
+var setCommState uint32
+var setCommTimeouts uint32
+var setCommMask uint32
+var waitCommEvent uint32
+var getOverlappedResult uint32
+var createEvent uint32
+
+func init() {
+	k32, err := syscall.LoadLibrary("kernel32.dll")
+	if err != 0 {
+		panic("LoadLibrary "+ syscall.Errstr(err))
+	}
+	defer syscall.FreeLibrary(k32)
+
+	setCommState, err = syscall.GetProcAddress(k32, "SetCommState")
+	if err != 0 {
+		panic("GetProcAddress "+ syscall.Errstr(err))
+	}
+	setCommTimeouts, err = syscall.GetProcAddress(k32, "SetCommTimeouts")
+	if err != 0 {
+		panic("SetCommTimeouts "+ syscall.Errstr(err))
+	}
+	setCommMask, err = syscall.GetProcAddress(k32, "SetCommMask")
+	if err != 0 {
+		panic("SetCommEvent "+ syscall.Errstr(err))
+	}
+	waitCommEvent, err = syscall.GetProcAddress(k32, "WaitCommEvent")
+	if err != 0 {
+		panic("WaitCommEvent "+ syscall.Errstr(err))
+	}
+	getOverlappedResult, err = syscall.GetProcAddress(k32, "GetOverlappedResult")
+	if err != 0 {
+		panic("GetOverlappedResult "+ syscall.Errstr(err))
+	}
+	createEvent, err = syscall.GetProcAddress(k32, "CreateEvent")
+	if err != 0 {
+		panic("CreateEvent "+ syscall.Errstr(err))
+	}
+}
+
+const FILE_FLAGS_OVERLAPPED = 0x40000000
+
 func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
-	f, err := os.Open(name, os.O_RDWR|os.O_NDELAY, 0666)
-	if err != nil {
-		return nil, err
+	//h, e := CreateFile(StringToUTF16Ptr(path), access, sharemode, sa, createmode, FILE_ATTRIBUTE_NORMAL, 0)
+
+	h, e := syscall.CreateFile(syscall.StringToUTF16Ptr(name), 
+		syscall.GENERIC_READ|syscall.GENERIC_WRITE,
+		uint32(syscall.FILE_SHARE_READ | syscall.FILE_SHARE_WRITE),
+		nil,
+		syscall.OPEN_EXISTING,
+		syscall.FILE_ATTRIBUTE_NORMAL|FILE_FLAGS_OVERLAPPED,
+		0)
+
+	if e != 0 {
+		return nil, &os.PathError{"open", name, os.Errno(e)}
 	}
 
-	type hp *C.HANDLE
-	var handle *C.HANDLE
-	fd := f.Fd()
-	handle = hp(unsafe.Pointer(&fd))
-	var params C.struct__DCB
-	params.DCBlength = C.DWORD(unsafe.Sizeof(params))
+	f := os.NewFile(int(h), name)
 
-	params.XonLim = 0
-	params.XoffLim = 0
+	var params structDCB
+	params.DCBlength = uint32(unsafe.Sizeof(params))
 
-	params.BaudRate = C.DWORD(baud)
+	params.BaudRate = uint32(baud)
 	params.ByteSize = 8
-	params.StopBits = C.ONESTOPBIT
-	params.Parity = C.NOPARITY
 
-	//fmt.Printf("%#v %v\n", params, params)
-
-	if ok, err := C.SetCommState(*handle, &params); ok == C.FALSE {
+	_, _, e2 := syscall.Syscall(uintptr(setCommState), uintptr(h), uintptr(unsafe.Pointer(&params)), 0, 0)
+	if e2 != 0 {
 		f.Close()
-		return nil, err
+		return nil, os.Errno(e)
 	}
 
 	// Turn off buffers
+	/*
 	if ok, err := C.SetupComm(*handle, 16, 16); ok == C.FALSE {
 		f.Close()
 		return nil, err
 	}
+	 */
 
-	var timeouts C.struct__COMMTIMEOUTS
-	const DWORDMAX = 1<<32 - 1
-	timeouts.ReadIntervalTimeout = DWORDMAX
+	var timeouts structTimeouts
+	timeouts.ReadIntervalTimeout = 1<<32 - 1
 	timeouts.ReadTotalTimeoutConstant = 0
-	if ok, err := C.SetCommTimeouts(*handle, &timeouts); ok == C.FALSE {
+	_, _, e2 = syscall.Syscall(uintptr(setCommTimeouts), uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0, 0)
+	if e2 != 0 {
 		f.Close()
-		return nil, err
+		return nil, os.Errno(e)
 	}
-	//fmt.Printf("%#v\n", timeouts)
 
-	if ok, err := C.SetCommMask(*handle, EV_RXCHAR); ok == C.FALSE {
+	_, _, e2 = syscall.Syscall(uintptr(setCommMask), uintptr(h), EV_RXCHAR, 0, 0)
+	if e2 != 0 {
 		f.Close()
-		return nil, err
+		return nil, os.Errno(e)
 	}
 
 	port := serialPort{f}
@@ -74,32 +136,71 @@ func (p *serialPort) Close() os.Error {
 }
 
 func (p *serialPort) Write(buf []byte) (int, os.Error) {
+	var events uint32
+	var overlapped syscall.Overlapped
+	var n int
+
+	fd := p.f.Fd()
+
+	r, _, e := syscall.Syscall(uintptr(createEvent), 0, 1, 0, 0)
+	if e != 0 {
+		return 0, os.Errno(e)
+	}
+	overlapped.HEvent = (*uint8)(unsafe.Pointer(r))
+
+	e1 := syscall.WriteFile(int32(fd), buf, &events, &overlapped)
+	if e1 != 0 {
+		return 0, os.Errno(e)
+	}
+
+	_, _, e = syscall.Syscall(uintptr(getOverlappedResult), uintptr(fd), uintptr(unsafe.Pointer(&overlapped)), uintptr(unsafe.Pointer(&n)), 1)
+	if e != 0 {
+		return 0, os.Errno(e)
+	}
+
 	return p.f.Write(buf)
 }
 
 func (p *serialPort) Read(buf []byte) (int, os.Error) {
-	type hp *C.HANDLE
-	var handle *C.HANDLE
-	fd := p.f.Fd()
-	handle = hp(unsafe.Pointer(&fd))
+	var events uint32
+	var overlapped syscall.Overlapped
+	var n int
 
-	var events C.DWORD
-	var overlapped *C.struct__OVERLAPPED
+	fd := p.f.Fd()
+
+	r, _, e := syscall.Syscall(uintptr(createEvent), 0, 1, 0, 0)
+	if e != 0 {
+		return 0, os.Errno(e)
+	}
+	overlapped.HEvent = (*uint8)(unsafe.Pointer(r))
 
 loop:
-	if ok, err := C.WaitCommEvent(*handle, &events, overlapped); ok == C.FALSE {
-		fmt.Printf("%v, 0x%04x\n", err, events)
-		return 0, err
+	_, _, e = syscall.Syscall(uintptr(waitCommEvent), uintptr(unsafe.Pointer(&events)), uintptr(unsafe.Pointer(&overlapped)), 0, 0)
+	if e != 0 {
+		return 0, os.Errno(e)
 	}
+
+	_, _, e = syscall.Syscall(uintptr(getOverlappedResult), uintptr(fd), uintptr(unsafe.Pointer(&overlapped)), uintptr(unsafe.Pointer(&n)), 1)
+	if e != 0 {
+		return 0, os.Errno(e)
+	}
+
 	// There is a small race window here between returning from WaitCommEvent and reading from the file.
 	// If we receive data in this window, we will read that data, but the RXFLAG will still be set
 	// and next time the WaitCommEvent() will return but we will have already read the data.  That's
 	// why we have the stupid goto loop on EOF.
-	n, err := p.f.Read(buf)
-	if err == os.EOF && n == 0 {
-		//fmt.Printf("%v, %v, %v, 0x%04x\n", err, n, len(buf), events)
+	e1 := syscall.ReadFile(int32(fd), buf, &events, &overlapped)
+	if e1 != 0 {
+		return 0, os.Errno(e)
+	}
+
+	_, _, e = syscall.Syscall(uintptr(getOverlappedResult), uintptr(fd), uintptr(unsafe.Pointer(&overlapped)), uintptr(unsafe.Pointer(&n)), 1)
+	if e != 0 {
+		return 0, os.Errno(e)
+	}
+	if n == 0 {
 		goto loop
 	}
 
-	return n, err
+	return n, nil
 }
