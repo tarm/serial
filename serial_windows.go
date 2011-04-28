@@ -1,10 +1,10 @@
 package serial
 
 import (
-	"os"
 	"io"
-	"unsafe"
+	"os"
 	"syscall"
+	"unsafe"
 )
 
 type serialPort struct {
@@ -33,6 +33,7 @@ type structTimeouts struct {
 var nSetCommState uint32
 var nSetCommTimeouts uint32
 var nSetCommMask uint32
+var nSetupComm uint32
 var nWaitCommEvent uint32
 var nGetOverlappedResult uint32
 var nCreateEvent uint32
@@ -62,6 +63,7 @@ func init() {
 	nSetCommState = loadDll(k32, "SetCommState")
 	nSetCommTimeouts = loadDll(k32, "SetCommTimeouts")
 	nSetCommMask = loadDll(k32, "SetCommMask")
+	nSetupComm = loadDll(k32, "SetupComm")
 	nWaitCommEvent = loadDll(k32, "WaitCommEvent")
 	nGetOverlappedResult = loadDll(k32, "GetOverlappedResult")
 	nCreateEvent = loadDll(k32, "CreateEventW")
@@ -71,7 +73,8 @@ func setCommState(h int32, baud int) os.Error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
-	params.flags[0] = 0x01 // fBinary
+	params.flags[0] = 0x01  // fBinary
+	params.flags[0] |= 0x10 // Assert DSR
 
 	params.BaudRate = uint32(baud)
 	params.ByteSize = 8
@@ -95,6 +98,14 @@ func setCommTimeouts(h int32) os.Error {
 	return nil
 }
 
+func setupComm(h int32, in, out int) os.Error {
+	r, _, e := syscall.Syscall(uintptr(nSetupComm), 3, uintptr(h), uintptr(in), uintptr(out))
+	if r == 0 {
+		return os.Errno(e)
+	}
+	return nil
+}
+
 func setCommMask(h int32) os.Error {
 	r, _, e := syscall.Syscall(uintptr(nSetCommMask), 2, uintptr(h), EV_RXCHAR, 0)
 	if r == 0 {
@@ -108,7 +119,7 @@ const FILE_FLAGS_OVERLAPPED = 0x40000000
 func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 	//h, e := CreateFile(StringToUTF16Ptr(path), access, sharemode, sa, createmode, FILE_ATTRIBUTE_NORMAL, 0)
 	if len(name) > 0 && name[0] != '\\' {
-		name = `\\.\` + name
+		name = "\\\\.\\" + name
 	}
 
 	h, e := syscall.CreateFile(syscall.StringToUTF16Ptr(name),
@@ -126,11 +137,11 @@ func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 	f := os.NewFile(int(h), name)
 
 	/*
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	h := int32(f.Fd())
+		f, err := os.Open(name)
+		if err != nil {
+			return nil, err
+		}
+		h := int32(f.Fd())
 	*/
 
 	if err := setCommState(h, baud); err != nil {
@@ -138,13 +149,10 @@ func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 		return nil, err
 	}
 
-	// Turn off buffers
-	/*
-		if ok, err := C.SetupComm(*handle, 16, 16); ok == C.FALSE {
-			f.Close()
-			return nil, err
-		}
-	*/
+	if err := setupComm(h, 64, 64); err != nil {
+		f.Close()
+		return nil, err
+	}
 
 	if err := setCommTimeouts(h); err != nil {
 		f.Close()
@@ -174,7 +182,7 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 	return &overlapped, nil
 }
 
-func getOverlappedResults(h int, overlapped *syscall.Overlapped) (int, os.Error) {
+func getOverlappedResult(h int, overlapped *syscall.Overlapped) (int, os.Error) {
 	var n int
 	r, _, e := syscall.Syscall6(uintptr(nGetOverlappedResult), 4,
 		uintptr(h),
@@ -188,8 +196,6 @@ func getOverlappedResults(h int, overlapped *syscall.Overlapped) (int, os.Error)
 }
 
 func (p *serialPort) Write(buf []byte) (int, os.Error) {
-	var events uint32
-
 	fd := p.f.Fd()
 
 	overlapped, err := newOverlapped()
@@ -197,20 +203,23 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 		return 0, err
 	}
 
-	e := syscall.WriteFile(int32(fd), buf, &events, overlapped)
-	if e != 0 && e != syscall.ERROR_IO_PENDING {
-		return 0, os.Errno(e)
+	var n uint32
+	e := syscall.WriteFile(int32(fd), buf, &n, overlapped)
+	if e != 0 {
+		if e == syscall.ERROR_IO_PENDING {
+			return getOverlappedResult(fd, overlapped)
+		} else {
+			return int(n), os.Errno(e)
+		}
 	}
 
-	n, err := getOverlappedResults(fd, overlapped)
-
-	return n, err
+	return int(n), nil
 }
 
 func waitCommEvent(h int, overlapped *syscall.Overlapped) os.Error {
 	var events uint32
 	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(&events)), uintptr(unsafe.Pointer(overlapped)))
-	if r == 0 && e != syscall.ERROR_IO_PENDING {
+	if r == 0 {
 		return os.Errno(e)
 	}
 	return nil
@@ -228,27 +237,35 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 
 loop:
 	if err = waitCommEvent(fd, overlapped); err != nil {
-		//return 0, err
+		if err != os.Errno(syscall.ERROR_IO_PENDING) {
+			return 0, err
+		}
 	}
-
-	_, err = getOverlappedResults(fd, overlapped)
+	_, err = getOverlappedResult(fd, overlapped)
 	if err != nil {
 		return 0, err
 	}
 
-	// There is a small race window here between returning from WaitCommEvent and reading from the file.
-	// If we receive data in this window, we will read that data, but the RXFLAG will still be set
-	// and next time the WaitCommEvent() will return but we will have already read the data.  That's
-	// why we have the stupid goto loop on EOF.
+	// There is a small race window here between returning from
+	// WaitCommEvent and reading from the file.  If we receive
+	// data in this window, we will read that data, but the RXFLAG
+	// will still be set and next time the WaitCommEvent() will
+	// return but we will have already read the data.  That's why
+	// we have the stupid goto loop on EOF.
+	overlapped, err = newOverlapped()
+	if err != nil {
+		return 0, err
+	}
+	var n int
 	e := syscall.ReadFile(int32(fd), buf, &events, overlapped)
 	if e != 0 && e != syscall.ERROR_IO_PENDING {
 		return 0, os.Errno(e)
 	}
-
-	n, err := getOverlappedResults(fd, overlapped)
+	n, err = getOverlappedResult(fd, overlapped)
 	if err != nil {
-		return 0, err
+		return n, err
 	}
+
 	if n == 0 {
 		goto loop
 	}
