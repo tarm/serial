@@ -202,6 +202,7 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 	if err != nil {
 		return 0, err
 	}
+	defer syscall.CloseHandle(int32(uintptr(unsafe.Pointer(overlapped.HEvent))))
 
 	var n uint32
 	e := syscall.WriteFile(p.fd, buf, &n, overlapped)
@@ -237,6 +238,7 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 	if err != nil {
 		return 0, err
 	}
+	defer syscall.CloseHandle(int32(uintptr(unsafe.Pointer(overlapped.HEvent))))
 
 loop:
 	if err = waitCommEvent(p.fd, overlapped); err != nil {
