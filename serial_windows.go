@@ -47,7 +47,7 @@ func here() {
 }
 */
 
-func loadDll(lib uint32, name string) uint32 {
+func getProcAddr(lib uint32, name string) uint32 {
 	addr, err := syscall.GetProcAddress(lib, name)
 	if err != 0 {
 		panic(name + " " + syscall.Errstr(err))
@@ -62,13 +62,13 @@ func init() {
 	}
 	defer syscall.FreeLibrary(k32)
 
-	nSetCommState = loadDll(k32, "SetCommState")
-	nSetCommTimeouts = loadDll(k32, "SetCommTimeouts")
-	nSetCommMask = loadDll(k32, "SetCommMask")
-	nSetupComm = loadDll(k32, "SetupComm")
-	nWaitCommEvent = loadDll(k32, "WaitCommEvent")
-	nGetOverlappedResult = loadDll(k32, "GetOverlappedResult")
-	nCreateEvent = loadDll(k32, "CreateEventW")
+	nSetCommState = getProcAddr(k32, "SetCommState")
+	nSetCommTimeouts = getProcAddr(k32, "SetCommTimeouts")
+	nSetCommMask = getProcAddr(k32, "SetCommMask")
+	nSetupComm = getProcAddr(k32, "SetupComm")
+	nWaitCommEvent = getProcAddr(k32, "WaitCommEvent")
+	nGetOverlappedResult = getProcAddr(k32, "GetOverlappedResult")
+	nCreateEvent = getProcAddr(k32, "CreateEventW")
 }
 
 func setCommState(h int32, baud int) os.Error {
