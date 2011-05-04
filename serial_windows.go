@@ -255,8 +255,16 @@ func waitCommEvent(h int32, overlapped *syscall.Overlapped) os.Error {
 	var events uint32
 	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(&events)), uintptr(unsafe.Pointer(overlapped)))
 	if r == 0 {
-		return os.Errno(e)
+		if e !=0 {
+			return os.Errno(e)
+		} else {
+			return os.NewSyscallError("WaitCommEvent", int(e))
+		}
 	}
+	if events != EV_RXCHAR {
+		return os.NewError("Bad event in wait comm event")
+	}
+
 	return nil
 }
 
@@ -271,20 +279,22 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 		return 0, os.NewError(str)
 	}
 
-	err := resetEvent(p.eo.HEvent)
+	err := resetEvent(p.ro.HEvent)
 	if err != nil {
 		return 0, err
 	}
 
-	err = waitCommEvent(p.fd, p.eo);
-	if  err != nil && err != os.Errno(syscall.ERROR_IO_PENDING) {
-		return 0, err
-	}
-
-	_, err = getOverlappedResult(p.fd, p.eo)
-	if err != nil {
-		fmt.Println(err)
-		return 0, err
+	err = waitCommEvent(p.fd, p.ro);
+	if  err != nil {
+		if err == os.Errno(syscall.ERROR_IO_PENDING) {
+			_, err = getOverlappedResult(p.fd, p.ro)
+			if err != nil {
+				fmt.Println(err)
+				return 0, err
+			}
+		} else {
+			return 0, err
+		}
 	}
 
 	err = resetEvent(p.ro.HEvent)
@@ -302,6 +312,5 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 		fmt.Println(err)
 		return n, err
 	}
-
 	return n, nil
 }
