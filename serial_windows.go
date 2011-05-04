@@ -12,6 +12,9 @@ import (
 type serialPort struct {
 	f  *os.File
 	fd int32
+	//ro *syscall.Overlapped
+	//wo *syscall.Overlapped
+	//eo *syscall.Overlapped
 }
 
 const EV_RXCHAR = 0x0001
@@ -40,6 +43,7 @@ var nSetupComm uint32
 var nWaitCommEvent uint32
 var nGetOverlappedResult uint32
 var nCreateEvent uint32
+var nResetEvent uint32
 
 func here() {
 	_, file, line, _ := runtime.Caller(1)
@@ -68,6 +72,7 @@ func init() {
 	nWaitCommEvent = getProcAddr(k32, "WaitCommEvent")
 	nGetOverlappedResult = getProcAddr(k32, "GetOverlappedResult")
 	nCreateEvent = getProcAddr(k32, "CreateEventW")
+	nResetEvent = getProcAddr(k32, "ResetEvent")
 }
 
 func setCommState(h int32, baud int) os.Error {
@@ -169,7 +174,7 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 	if r == 0 {
 		return nil, os.Errno(e)
 	}
-	overlapped.HEvent = (*uint8)(unsafe.Pointer(r))
+	overlapped.HEvent = int32(r)
 	return &overlapped, nil
 }
 
@@ -191,7 +196,7 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 	if err != nil {
 		return 0, err
 	}
-	defer syscall.CloseHandle(int32(uintptr(unsafe.Pointer(overlapped.HEvent))))
+	defer syscall.CloseHandle(overlapped.HEvent)
 
 	var n uint32
 	e := syscall.WriteFile(p.fd, buf, &n, overlapped)
@@ -222,7 +227,7 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 	if err != nil {
 		return 0, err
 	}
-	defer syscall.CloseHandle(int32(uintptr(unsafe.Pointer(overlapped.HEvent))))
+	defer syscall.CloseHandle(overlapped.HEvent)
 
 	err = waitCommEvent(p.fd, overlapped);
 	if  err != nil && err != os.Errno(syscall.ERROR_IO_PENDING) {
@@ -240,7 +245,7 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 		fmt.Println(err)
 		return 0, err
 	}
-	defer syscall.CloseHandle(int32(uintptr(unsafe.Pointer(overlapped2.HEvent))))
+	defer syscall.CloseHandle(overlapped2.HEvent)
 
 	var n int
 	e := syscall.ReadFile(p.fd, buf, &events, overlapped2)
