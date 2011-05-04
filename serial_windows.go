@@ -126,7 +126,11 @@ func setCommMask(h int32) os.Error {
 func resetEvent(h int32) os.Error {
 	r, _, e := syscall.Syscall(uintptr(nResetEvent), 1, uintptr(h), 0, 0)
 	if r == 0 {
-		return os.Errno(e)
+		if e !=0 {
+			return os.Errno(e)
+		} else {
+			return os.Errno(syscall.EINVAL)
+		}
 	}
 	return nil
 }
@@ -203,7 +207,11 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 	var overlapped syscall.Overlapped
 	r, _, e := syscall.Syscall6(uintptr(nCreateEvent), 4, 0, 1, 0, 0, 0, 0)
 	if r == 0 {
-		return nil, os.Errno(e)
+		if e !=0 {
+			return nil, os.Errno(e)
+		} else {
+			return nil, os.Errno(syscall.EINVAL)
+		}
 	}
 	overlapped.HEvent = int32(r)
 	return &overlapped, nil
@@ -216,7 +224,11 @@ func getOverlappedResult(h int32, overlapped *syscall.Overlapped) (int, os.Error
 		uintptr(unsafe.Pointer(overlapped)),
 		uintptr(unsafe.Pointer(&n)), 1, 0, 0)
 	if r == 0 {
-		return n, os.Errno(e)
+		if e !=0 {
+			return n, os.Errno(e)
+		} else {
+			return n, os.Errno(syscall.EINVAL)
+		}
 	}
 
 	return n, nil
