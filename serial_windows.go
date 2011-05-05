@@ -251,18 +251,14 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 	return getOverlappedResult(p.fd, p.wo)
 }
 
-func waitCommEvent(h int32, overlapped *syscall.Overlapped) os.Error {
-	var events uint32
-	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(&events)), uintptr(unsafe.Pointer(overlapped)))
+func waitCommEvent(h int32, events *uint32, overlapped *syscall.Overlapped) os.Error {
+	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(events)), uintptr(unsafe.Pointer(overlapped)))
 	if r == 0 {
 		if e !=0 {
 			return os.Errno(e)
 		} else {
 			return os.NewSyscallError("WaitCommEvent", int(e))
 		}
-	}
-	if events != EV_RXCHAR {
-		return os.NewError("Bad event in wait comm event")
 	}
 
 	return nil
@@ -279,38 +275,47 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 		return 0, os.NewError(str)
 	}
 
-	err := resetEvent(p.ro.HEvent)
-	if err != nil {
-		return 0, err
-	}
+	var n int
+	for n == 0 {
+		err := resetEvent(p.ro.HEvent)
+		if err != nil {
+			return 0, err
+		}
 
-	err = waitCommEvent(p.fd, p.ro);
-	if  err != nil {
-		if err == os.Errno(syscall.ERROR_IO_PENDING) {
-			_, err = getOverlappedResult(p.fd, p.ro)
+		e := syscall.ReadFile(p.fd, buf, &events, p.ro)
+		if e != 0 && e != syscall.ERROR_IO_PENDING {
+			return 0, os.Errno(e)
+		}
+		n, err = getOverlappedResult(p.fd, p.ro)
+		if err != nil {
+			fmt.Println(err)
+			return n, err
+		}
+		//time.Sleep(.0001e9)
+
+		if n == 0 {
+			err = resetEvent(p.ro.HEvent)
 			if err != nil {
-				fmt.Println(err)
 				return 0, err
 			}
-		} else {
-			return 0, err
+			var events uint32
+			err = waitCommEvent(p.fd, &events, p.ro);
+			if  err != nil {
+				if err == os.Errno(syscall.ERROR_IO_PENDING) {
+					_, err = getOverlappedResult(p.fd, p.ro)
+					if err != nil {
+						fmt.Println(err)
+						return 0, err
+					}
+				} else {
+					return 0, err
+				}
+			}
+			if events != EV_RXCHAR {
+				return 0, os.NewError("Bad event in wait comm event")
+			}
 		}
 	}
 
-	err = resetEvent(p.ro.HEvent)
-	if err != nil {
-		return 0, err
-	}
-
-	var n int
-	e := syscall.ReadFile(p.fd, buf, &events, p.ro)
-	if e != 0 && e != syscall.ERROR_IO_PENDING {
-		return 0, os.Errno(e)
-	}
-	n, err = getOverlappedResult(p.fd, p.ro)
-	if err != nil {
-		fmt.Println(err)
-		return n, err
-	}
 	return n, nil
 }
