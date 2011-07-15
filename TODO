@@ -1,0 +1,8 @@
+
+Add License
+
+Add README
+
+Change OpenPort to use a Config which can be extended later
+
+Change to using syscall package + ioctl instead of cgo ?

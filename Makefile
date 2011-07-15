@@ -1,6 +1,6 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=os/serial
+TARG=github.com/tarm/goserial
 
 ifeq ($(GOOS),windows)
 GOFILES=serial_$(GOOS).go

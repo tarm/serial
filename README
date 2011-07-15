@@ -1,0 +1,41 @@
+This is a simple go package to allow you to read and write from the
+serial port.
+
+It aims to have the same API on all platforms, including windows.
+
+Currently there is very little in the way of configurability.  You can
+set the baud rate.  Then you can Read(), Write(), or Close() the
+connection.  Read() will block until at least one byte is returned.
+Write is the same.  There is currently no exposed way to set the
+timeouts, though patches are welcome.
+
+You may Read() and Write() simulantiously on the same connection (from
+different goroutines).
+
+Basic usage is as follows:
+
+package serial
+
+import (
+        "github.com/tarm/goserial"
+        "log"
+)
+
+func main() {
+        s, err := serial.OpenPort("COM5", 115200)
+        if err != nil {
+                log.Fatal(err)
+        }
+        
+        n, err := s.Write([]byte("test"))
+        if err != nil {
+                log.Fatal(err)
+        }
+        
+        buf := make([]byte, 128)
+        n, err = s.Read(buf)
+        if err != nil {
+                log.Fatal(err)
+        }
+        log.Print("%q", buf[:n])
+}
