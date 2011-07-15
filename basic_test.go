@@ -10,12 +10,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	n, err := s.Write([]byte("test"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	buf := make([]byte, 128)
 	n, err = s.Read(buf)
 	if err != nil {

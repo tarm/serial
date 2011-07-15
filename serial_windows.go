@@ -128,7 +128,7 @@ func setCommMask(h syscall.Handle) os.Error {
 func resetEvent(h syscall.Handle) os.Error {
 	r, _, e := syscall.Syscall(uintptr(nResetEvent), 1, uintptr(h), 0, 0)
 	if r == 0 {
-		if e !=0 {
+		if e != 0 {
 			return os.Errno(e)
 		} else {
 			return os.Errno(syscall.EINVAL)
@@ -192,7 +192,7 @@ func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
 		return nil, err
 	}
 	port := new(serialPort)
-	port.f  = f
+	port.f = f
 	port.fd = h
 	port.ro = ro
 	port.wo = wo
@@ -209,7 +209,7 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 	var overlapped syscall.Overlapped
 	r, _, e := syscall.Syscall6(uintptr(nCreateEvent), 4, 0, 1, 0, 0, 0, 0)
 	if r == 0 {
-		if e !=0 {
+		if e != 0 {
 			return nil, os.Errno(e)
 		} else {
 			return nil, os.Errno(syscall.EINVAL)
@@ -226,7 +226,7 @@ func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int,
 		uintptr(unsafe.Pointer(overlapped)),
 		uintptr(unsafe.Pointer(&n)), 1, 0, 0)
 	if r == 0 {
-		if e !=0 {
+		if e != 0 {
 			return n, os.Errno(e)
 		} else {
 			return n, os.Errno(syscall.EINVAL)
@@ -256,7 +256,7 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 func waitCommEvent(h syscall.Handle, events *uint32, overlapped *syscall.Overlapped) os.Error {
 	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(events)), uintptr(unsafe.Pointer(overlapped)))
 	if r == 0 {
-		if e !=0 {
+		if e != 0 {
 			return os.Errno(e)
 		} else {
 			return os.NewSyscallError("WaitCommEvent", int(e))
@@ -301,8 +301,8 @@ func (p *serialPort) Read(buf []byte) (int, os.Error) {
 				return 0, err
 			}
 			var events uint32
-			err = waitCommEvent(p.fd, &events, p.ro);
-			if  err != nil {
+			err = waitCommEvent(p.fd, &events, p.ro)
+			if err != nil {
 				if err == os.Errno(syscall.ERROR_IO_PENDING) {
 					_, err = getOverlappedResult(p.fd, p.ro)
 					if err != nil {

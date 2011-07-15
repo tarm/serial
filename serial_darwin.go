@@ -35,11 +35,11 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	case 115200:
 		speed = C.B115200
 	case 76800:
-                speed = C.B76800
-        case 57600:
-                speed = C.B57600
-        case 38400:
-                speed = C.B38400
+		speed = C.B76800
+	case 57600:
+		speed = C.B57600
+	case 38400:
+		speed = C.B38400
 	case 19200:
 		speed = C.B19200
 	case 9600:
@@ -85,15 +85,15 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	}
 
 	/*
-			r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
-		                uintptr(f.Fd()),
-		                uintptr(0x80045402), // IOSSIOSPEED
-		                uintptr(unsafe.Pointer(&baud)));
-		        if e != 0 || r1 != 0 {
-		                s := fmt.Sprint("Baudrate syscall error:", e, r1)
-				f.Close()
-	                        return nil, os.NewError(s)
-			}
+				r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
+			                uintptr(f.Fd()),
+			                uintptr(0x80045402), // IOSSIOSPEED
+			                uintptr(unsafe.Pointer(&baud)));
+			        if e != 0 || r1 != 0 {
+			                s := fmt.Sprint("Baudrate syscall error:", e, r1)
+					f.Close()
+		                        return nil, os.NewError(s)
+				}
 	*/
 
 	return f, nil
