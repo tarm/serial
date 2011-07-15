@@ -12,14 +12,6 @@ import (
 	//"unsafe"
 )
 
-type SError struct {
-	msg string
-}
-
-func (e SError) String() string {
-	return e.msg
-}
-
 func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
 	if err != nil {
@@ -29,7 +21,7 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	fd := C.int(f.Fd())
 	if C.isatty(fd) != 1 {
 		f.Close()
-		return nil, SError{"File is not a tty"}
+		return nil, os.NewError("File is not a tty")
 	}
 
 	var st C.struct_termios
@@ -54,7 +46,7 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 		speed = C.B9600
 	default:
 		f.Close()
-		return nil, SError{fmt.Sprintf("Unknown baud rate %v", baud)}
+		return nil, fmt.Errorf("Unknown baud rate %v", baud)
 	}
 
 	_, err = C.cfsetispeed(&st, speed)
@@ -89,7 +81,7 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	if e != 0 || r1 != 0 {
 		s := fmt.Sprint("Clearing NONBLOCK syscall error:", e, r1)
 		f.Close()
-		return nil, SError{s}
+		return nil, os.NewError(s)
 	}
 
 	/*
@@ -100,7 +92,7 @@ func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 		        if e != 0 || r1 != 0 {
 		                s := fmt.Sprint("Baudrate syscall error:", e, r1)
 				f.Close()
-				return nil, SError{s}
+	                        return nil, os.NewError(s)
 			}
 	*/
 
