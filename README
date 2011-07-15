@@ -1,7 +1,12 @@
 This is a simple go package to allow you to read and write from the
 serial port.
 
-It aims to have the same API on all platforms, including windows.
+It aims to have the same API on all platforms, including windows.  As
+an added bonus, the windows package does not use cgo, so you can cross
+compile for windows from another platform.  Unfortunately goinstall
+does not currently let you cross compile so you will have to do it
+manually:
+     GOOS=windows make clean install
 
 Currently there is very little in the way of configurability.  You can
 set the baud rate.  Then you can Read(), Write(), or Close() the
