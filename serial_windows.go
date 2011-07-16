@@ -132,7 +132,6 @@ var (
 	nSetCommTimeouts,
 	nSetCommMask,
 	nSetupComm,
-	nWaitCommEvent,
 	nGetOverlappedResult,
 	nCreateEvent,
 	nResetEvent syscall.Handle
@@ -149,7 +148,6 @@ func init() {
 	nSetCommTimeouts = getProcAddr(k32, "SetCommTimeouts")
 	nSetCommMask = getProcAddr(k32, "SetCommMask")
 	nSetupComm = getProcAddr(k32, "SetupComm")
-	nWaitCommEvent = getProcAddr(k32, "WaitCommEvent")
 	nGetOverlappedResult = getProcAddr(k32, "GetOverlappedResult")
 	nCreateEvent = getProcAddr(k32, "CreateEventW")
 	nResetEvent = getProcAddr(k32, "ResetEvent")
@@ -244,13 +242,4 @@ func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int,
 	}
 
 	return n, nil
-}
-
-func waitCommEvent(h syscall.Handle, events *uint32, overlapped *syscall.Overlapped) os.Error {
-	r, _, e := syscall.Syscall(uintptr(nWaitCommEvent), 3, uintptr(h), uintptr(unsafe.Pointer(events)), uintptr(unsafe.Pointer(overlapped)))
-	if r == 0 {
-		return errno(e)
-	}
-
-	return nil
 }
