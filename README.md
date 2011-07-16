@@ -61,5 +61,4 @@ Possible Future Work
 --------------------
 - Change OpenPort to use a Config which can be extended later
 - Change to using syscall package + ioctl instead of cgo ?
-- Clean up windows syscall error handling
 - godoc
