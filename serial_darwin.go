@@ -12,7 +12,7 @@ import (
 	//"unsafe"
 )
 
-func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
+func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
 	if err != nil {
 		return

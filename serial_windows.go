@@ -35,7 +35,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func OpenPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
+func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}

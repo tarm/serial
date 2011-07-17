@@ -1,17 +1,14 @@
-GoSerial
-========
-A simple go package to allow you to read and write from the
-serial port as a stream of bytes.
+/*
+Goserial is a simple go package to allow you to read and write from
+the serial port as a stream of bytes.
 
-Details
--------
 It aims to have the same API on all platforms, including windows.  As
 an added bonus, the windows package does not use cgo, so you can cross
 compile for windows from another platform.  Unfortunately goinstall
 does not currently let you cross compile so you will have to do it
 manually:
 
-    GOOS=windows make clean install
+ GOOS=windows make clean install
 
 Currently there is very little in the way of configurability.  You can
 set the baud rate.  Then you can Read(), Write(), or Close() the
@@ -27,38 +24,82 @@ including usb-to-serial converters and bluetooth serial ports.
 You may Read() and Write() simulantiously on the same connection (from
 different goroutines).
 
-Usage
------
-```go
-package main
+Example usage:
 
-import (
+  package main
+
+  import (
         "github.com/tarm/goserial"
         "log"
-)
+  )
 
-func main() {
+  func main() {
         s, err := serial.OpenPort("COM5", 115200)
         if err != nil {
                 log.Fatal(err)
         }
-        
+
         n, err := s.Write([]byte("test"))
         if err != nil {
                 log.Fatal(err)
         }
-        
+
         buf := make([]byte, 128)
         n, err = s.Read(buf)
         if err != nil {
                 log.Fatal(err)
         }
         log.Print("%q", buf[:n])
-}
-```
+  }
+*/
+package serial
 
-Possible Future Work
---------------------
-- Change OpenPort to use a Config which can be extended later
-- Change to using syscall package + ioctl instead of cgo ?
-- better tests (loopback etc)
+import (
+	"io"
+	"os"
+)
+
+
+// Config contains the information needed to open a serial port.
+//
+// Currently few options are implemented, but more may be added in the
+// future (patches welcome), so it is recommended that you create a
+// new config addressing the fields by name rather than by order.
+//
+// For example:
+//
+//    c0 := &serial.Config{Name: "COM5", Baud: 115200}
+// or
+//    c1 := new(serial.Config)
+//    c1.Name = "COM5"
+//    c1.Baud = 115200
+//
+// On windows names might be "COM2" or "COM45", while on OSX or
+// linux, they might be "/dev/tty.usbserial".
+type Config struct {
+	Name string
+	Baud int
+
+	// Size int
+	// ParityEven bool
+	// ParityOdd bool
+	// StopBits int
+
+	// SWFlowControl bool
+	// DSRFlowControl bool
+	// CRTSCTSFlowControl bool
+	// CRLFTranslate bool
+
+	// TimeoutStuff int
+}
+
+// OpenPort opens a serial port with the specified configuration
+func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
+	return openPort(name, baud)
+}
+
+// func Flush()
+
+// func SendBreak()
+
+// func RegisterBreakHandler(func())
