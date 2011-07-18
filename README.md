@@ -38,7 +38,8 @@ import (
 )
 
 func main() {
-        s, err := serial.OpenPort("COM5", 115200)
+        c := &serial.Config{Name: "COM45", Baud: 115200}
+        s, err := serial.OpenPort(c)
         if err != nil {
                 log.Fatal(err)
         }
@@ -58,7 +59,5 @@ func main() {
 ```
 
 Possible Future Work
---------------------
-- Change OpenPort to use a Config which can be extended later
-- Change to using syscall package + ioctl instead of cgo ?
+-------------------- 
 - better tests (loopback etc)

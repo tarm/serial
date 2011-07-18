@@ -1,25 +1,36 @@
 package serial
 
 import (
-	"github.com/tarm/goserial"
-	"log"
+	"testing"
 )
 
-func main() {
-	s, err := serial.OpenPort("COM5", 115200)
+func TestConnection(t *testing.T) {
+	c0 := &Config{Name: "COM5", Baud: 115200}
+
+	/*
+		c1 := new(Config)
+		c1.Name = "COM5"
+		c1.Baud = 115200
+	*/
+
+	s, err := OpenPort(c0)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
-	n, err := s.Write([]byte("test"))
+	_, err = s.Write([]byte("test"))
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	buf := make([]byte, 128)
-	n, err = s.Read(buf)
+	_, err = s.Read(buf)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	log.Print("%q", buf[:n])
+}
+
+// BUG(tarmigan): Add loopback test
+func TestLoopback(t *testing.T) {
+
 }

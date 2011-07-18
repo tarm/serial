@@ -34,7 +34,8 @@ Example usage:
   )
 
   func main() {
-        s, err := serial.OpenPort("COM5", 115200)
+        c := &serial.Config{Name: "COM5", Baud: 115200}
+        s, err := serial.OpenPort(c)
         if err != nil {
                 log.Fatal(err)
         }
@@ -59,7 +60,6 @@ import (
 	"os"
 )
 
-
 // Config contains the information needed to open a serial port.
 //
 // Currently few options are implemented, but more may be added in the
@@ -68,34 +68,31 @@ import (
 //
 // For example:
 //
-//    c0 := &serial.Config{Name: "COM5", Baud: 115200}
+//    c0 := &serial.Config{Name: "COM45", Baud: 115200}
 // or
 //    c1 := new(serial.Config)
-//    c1.Name = "COM5"
+//    c1.Name = "/dev/tty.usbserial"
 //    c1.Baud = 115200
 //
-// On windows names might be "COM2" or "COM45", while on OSX or
-// linux, they might be "/dev/tty.usbserial".
 type Config struct {
 	Name string
 	Baud int
 
-	// Size int
-	// ParityEven bool
-	// ParityOdd bool
-	// StopBits int
+	// Size     int // 0 get translated to 8
+	// Parity   SomeNewTypeToGetCorrectDefaultOf_None
+	// StopBits SomeNewTypeToGetCorrectDefaultOf_1
 
-	// SWFlowControl bool
-	// DSRFlowControl bool
-	// CRTSCTSFlowControl bool
+	// RTSFlowControl bool
+	// DTRFlowControl bool
+	// XONFlowControl bool
+
 	// CRLFTranslate bool
-
 	// TimeoutStuff int
 }
 
 // OpenPort opens a serial port with the specified configuration
-func OpenPort(name string, baud int) (io.ReadWriteCloser, os.Error) {
-	return openPort(name, baud)
+func OpenPort(c *Config) (io.ReadWriteCloser, os.Error) {
+	return openPort(c.Name, c.Baud)
 }
 
 // func Flush()
