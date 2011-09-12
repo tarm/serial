@@ -134,7 +134,7 @@ var (
 	nSetupComm,
 	nGetOverlappedResult,
 	nCreateEvent,
-	nResetEvent syscall.Handle
+	nResetEvent uintptr
 )
 
 func init() {
@@ -153,7 +153,7 @@ func init() {
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 }
 
-func getProcAddr(lib syscall.Handle, name string) syscall.Handle {
+func getProcAddr(lib syscall.Handle, name string) uintptr {
 	addr, err := syscall.GetProcAddress(lib, name)
 	if err != 0 {
 		panic(name + " " + syscall.Errstr(err))
@@ -178,7 +178,7 @@ func setCommState(h syscall.Handle, baud int) os.Error {
 	params.BaudRate = uint32(baud)
 	params.ByteSize = 8
 
-	r, _, e := syscall.Syscall(uintptr(nSetCommState), 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
+	r, _, e := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
 	if r == 0 {
 		return errno(e)
 	}
@@ -189,7 +189,7 @@ func setCommTimeouts(h syscall.Handle) os.Error {
 	var timeouts structTimeouts
 	timeouts.ReadIntervalTimeout = 1<<32 - 1
 	timeouts.ReadTotalTimeoutConstant = 0
-	r, _, e := syscall.Syscall(uintptr(nSetCommTimeouts), 2, uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0)
+	r, _, e := syscall.Syscall(nSetCommTimeouts, 2, uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0)
 	if r == 0 {
 		return errno(e)
 	}
@@ -197,7 +197,7 @@ func setCommTimeouts(h syscall.Handle) os.Error {
 }
 
 func setupComm(h syscall.Handle, in, out int) os.Error {
-	r, _, e := syscall.Syscall(uintptr(nSetupComm), 3, uintptr(h), uintptr(in), uintptr(out))
+	r, _, e := syscall.Syscall(nSetupComm, 3, uintptr(h), uintptr(in), uintptr(out))
 	if r == 0 {
 		return errno(e)
 	}
@@ -206,7 +206,7 @@ func setupComm(h syscall.Handle, in, out int) os.Error {
 
 func setCommMask(h syscall.Handle) os.Error {
 	const EV_RXCHAR = 0x0001
-	r, _, e := syscall.Syscall(uintptr(nSetCommMask), 2, uintptr(h), EV_RXCHAR, 0)
+	r, _, e := syscall.Syscall(nSetCommMask, 2, uintptr(h), EV_RXCHAR, 0)
 	if r == 0 {
 		return errno(e)
 	}
@@ -214,7 +214,7 @@ func setCommMask(h syscall.Handle) os.Error {
 }
 
 func resetEvent(h syscall.Handle) os.Error {
-	r, _, e := syscall.Syscall(uintptr(nResetEvent), 1, uintptr(h), 0, 0)
+	r, _, e := syscall.Syscall(nResetEvent, 1, uintptr(h), 0, 0)
 	if r == 0 {
 		return errno(e)
 	}
@@ -223,7 +223,7 @@ func resetEvent(h syscall.Handle) os.Error {
 
 func newOverlapped() (*syscall.Overlapped, os.Error) {
 	var overlapped syscall.Overlapped
-	r, _, e := syscall.Syscall6(uintptr(nCreateEvent), 4, 0, 1, 0, 0, 0, 0)
+	r, _, e := syscall.Syscall6(nCreateEvent, 4, 0, 1, 0, 0, 0, 0)
 	if r == 0 {
 		return nil, errno(e)
 	}
@@ -233,7 +233,7 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 
 func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int, os.Error) {
 	var n int
-	r, _, e := syscall.Syscall6(uintptr(nGetOverlappedResult), 4,
+	r, _, e := syscall.Syscall6(nGetOverlappedResult, 4,
 		uintptr(h),
 		uintptr(unsafe.Pointer(overlapped)),
 		uintptr(unsafe.Pointer(&n)), 1, 0, 0)
