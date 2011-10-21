@@ -35,8 +35,6 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	switch baud {
 	case 115200:
 		speed = C.B115200
-	case 76800:
-		speed = C.B76800
 	case 57600:
 		speed = C.B57600
 	case 38400:
