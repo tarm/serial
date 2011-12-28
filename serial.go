@@ -55,10 +55,7 @@ Example usage:
 */
 package serial
 
-import (
-	"io"
-	"os"
-)
+import "io"
 
 // Config contains the information needed to open a serial port.
 //
@@ -91,7 +88,7 @@ type Config struct {
 }
 
 // OpenPort opens a serial port with the specified configuration
-func OpenPort(c *Config) (io.ReadWriteCloser, os.Error) {
+func OpenPort(c *Config) (io.ReadWriteCloser, error) {
 	return openPort(c.Name, c.Baud)
 }
 
