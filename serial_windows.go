@@ -52,7 +52,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	if err != nil {
 		return nil, err
 	}
-	f := os.NewFile(h, name)
+	f := os.NewFile(uintptr(h), name)
 	defer func() {
 		if err != nil {
 			f.Close()
