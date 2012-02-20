@@ -5,6 +5,9 @@ import (
 )
 
 func TestConnection(t *testing.T) {
+	if testing.Short() {
+		return
+	}
 	c0 := &Config{Name: "COM5", Baud: 115200}
 
 	/*
