@@ -5,6 +5,7 @@ package serial
 // #include <termios.h>
 // #include <unistd.h>
 import "C"
+
 // TODO: Maybe change to using syscall package + ioctl instead of cgo
 
 import (
