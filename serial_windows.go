@@ -59,7 +59,7 @@ func openPort(name string, c *Config) (rwc io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	if err = setCommState(h, c.Baud); err != nil {
+	if err = setCommState(h, c); err != nil {
 		return
 	}
 	if err = setupComm(h, 64, 64); err != nil {
@@ -161,7 +161,7 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func setCommState(h syscall.Handle, baud int) error {
+func setCommState(h syscall.Handle, c *Config) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
@@ -169,7 +169,34 @@ func setCommState(h syscall.Handle, baud int) error {
 	params.flags[0] |= 0x10 // Assert DSR
 
 	params.BaudRate = uint32(baud)
-	params.ByteSize = 8
+
+	// Select byte size.
+	if _, err := c.size(); err != nil {
+		return err
+	}
+	params.ByteSize = byte(c.Size)
+
+	// Select parity mode.
+	if parity, err := c.parity(); err != nil {
+		return err
+	} else switch parity {
+	case ParityNone:
+		params.Parity = 0
+	case ParityEven:
+		params.Parity = 2
+	case ParityOdd:
+		params.Parity = 1
+	}
+
+	// Selet stop bits.
+	if stopBits, err := c.stopBits(); err != nil {
+		return err
+	} else switch stopBits {
+	case 1:
+		params.StopBits = 0
+	case 2:
+		params.StopBits = 2
+	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
 	if r == 0 {

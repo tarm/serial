@@ -92,15 +92,15 @@ type Config struct {
 	Name string
 	Baud int
 
-	Size     int        // 0 get translated to 8 TODO Windows support.
-	Parity   ParityMode // TODO Windows support.
-	StopBits int        // 0 (default) and 1 means 1 stop bit, 2 means 2 stop bits. TODO Windows support.
+	Size     int // 0 get translated to 8
+	Parity   ParityMode
+	StopBits int // 0 (default) and 1 means 1 stop bit, 2 means 2 stop bits
 
 	// RTSFlowControl bool
 	// DTRFlowControl bool
 	// XONFlowControl bool
 
-	CRLFTranslate bool // TODO Windows support.
+	CRLFTranslate bool // Ignored on Windows.
 	// TimeoutStuff int
 }
 
