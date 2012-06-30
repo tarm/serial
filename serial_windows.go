@@ -1,6 +1,6 @@
 // +build windows
 
-package serial
+package goserial
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, c *Config) (rwc io.ReadWriteCloser, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -59,7 +59,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	if err = setCommState(h, baud); err != nil {
+	if err = setCommState(h, c.Baud); err != nil {
 		return
 	}
 	if err = setupComm(h, 64, 64); err != nil {

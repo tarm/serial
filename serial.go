@@ -53,9 +53,26 @@ Example usage:
         log.Print("%q", buf[:n])
   }
 */
-package serial
+package goserial
 
-import "io"
+import (
+	"errors"
+	"io"
+)
+
+var (
+	ErrConfigStopBits = errors.New("goserial config: bad number of stop bits")
+	ErrConfigSize     = errors.New("goserial config: bad size")
+	ErrConfigParity   = errors.New("goserial config: bad parity")
+)
+
+type ParityMode byte
+
+const (
+	ParityNone = iota
+	ParityEven
+	ParityOdd
+)
 
 // Config contains the information needed to open a serial port.
 //
@@ -75,21 +92,49 @@ type Config struct {
 	Name string
 	Baud int
 
-	// Size     int // 0 get translated to 8
-	// Parity   SomeNewTypeToGetCorrectDefaultOf_None
-	// StopBits SomeNewTypeToGetCorrectDefaultOf_1
+	Size     int        // 0 get translated to 8 TODO Windows support.
+	Parity   ParityMode // TODO Windows support.
+	StopBits int        // 0 (default) and 1 means 1 stop bit, 2 means 2 stop bits. TODO Windows support.
 
 	// RTSFlowControl bool
 	// DTRFlowControl bool
 	// XONFlowControl bool
 
-	// CRLFTranslate bool
+	CRLFTranslate bool // TODO Windows support.
 	// TimeoutStuff int
+}
+
+func (c *Config) size() (int, error) {
+	switch c.Size {
+	case 0:
+		return 8, nil
+	case 5, 6, 7, 8:
+		return c.Size, nil
+	}
+	return 0, ErrConfigSize
+}
+
+func (c *Config) stopBits() (int, error) {
+	switch c.StopBits {
+	case 0:
+		return 1, nil
+	case 1, 2:
+		return c.StopBits, nil
+	}
+	return 0, ErrConfigStopBits
+}
+
+func (c *Config) checkParityMode() error {
+	switch c.Parity {
+	case ParityNone, ParityEven, ParityOdd:
+		return nil
+	}
+	return ErrConfigParity
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
-	return openPort(c.Name, c.Baud)
+	return openPort(c.Name, c)
 }
 
 // func Flush()
