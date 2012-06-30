@@ -16,10 +16,10 @@ connection.  Read() will block until at least one byte is returned.
 Write is the same.  There is currently no exposed way to set the
 timeouts, though patches are welcome.
 
-Currently all ports are opened with 8 data bits, 1 stop bit, no
-parity, no hardware flow control, and no software flow control.  This
-works fine for many real devices and many faux serial devices
-including usb-to-serial converters and bluetooth serial ports.
+Currently ports are opened with 8 data bits, 1 stop bit, no parity, no hardware
+flow control, and no software flow control by default.  This works fine for
+many real devices and many faux serial devices including usb-to-serial
+converters and bluetooth serial ports.
 
 You may Read() and Write() simulantiously on the same connection (from
 different goroutines).
