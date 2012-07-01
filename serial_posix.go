@@ -68,54 +68,42 @@ func openPort(name string, c *Config) (rwc io.ReadWriteCloser, err error) {
 	st.c_cflag |= C.CLOCAL | C.CREAD
 
 	// Select stop bits
-	if stopBits, err := c.stopBits(); err != nil {
-		return nil, err
-	} else {
-		switch stopBits {
-		case 1:
-			st.c_cflag &^= C.CSTOPB
-		case 2:
-			st.c_cflag |= C.CSTOPB
-		default:
-			panic(stopBits)
-		}
+	switch c.StopBits {
+	case StopBits1:
+		st.c_cflag &^= C.CSTOPB
+	case StopBits2:
+		st.c_cflag |= C.CSTOPB
+	default:
+		panic(c.StopBits)
 	}
 
 	// Select character size
 	st.c_cflag &^= C.CSIZE
-	if size, err := c.size(); err != nil {
-		return nil, err
-	} else {
-		switch size {
-		case 5:
-			st.c_cflag |= C.CS5
-		case 6:
-			st.c_cflag |= C.CS6
-		case 7:
-			st.c_cflag |= C.CS7
-		case 8:
-			st.c_cflag |= C.CS8
-		default:
-			panic(size)
-		}
+	switch c.Size {
+	case 5:
+		st.c_cflag |= C.CS5
+	case 6:
+		st.c_cflag |= C.CS6
+	case 7:
+		st.c_cflag |= C.CS7
+	case 8:
+		st.c_cflag |= C.CS8
+	default:
+		panic(c.Size)
 	}
 
 	// Select parity mode
-	if err = c.checkParityMode(); err != nil {
-		return nil, err
-	} else {
-		switch c.Parity {
-		case ParityNone:
-			st.c_cflag &^= C.PARENB
-		case ParityEven:
-			st.c_cflag |= C.PARENB
-			st.c_cflag &^= C.PARODD
-		case ParityOdd:
-			st.c_cflag |= C.PARENB
-			st.c_cflag |= C.PARODD
-		default:
-			panic(c.Parity)
-		}
+	switch c.Parity {
+	case ParityNone:
+		st.c_cflag &^= C.PARENB
+	case ParityEven:
+		st.c_cflag |= C.PARENB
+		st.c_cflag &^= C.PARODD
+	case ParityOdd:
+		st.c_cflag |= C.PARENB
+		st.c_cflag |= C.PARODD
+	default:
+		panic(c.Parity)
 	}
 
 	// Select CRLF translation

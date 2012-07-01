@@ -62,16 +62,32 @@ import (
 
 var (
 	ErrConfigStopBits = errors.New("goserial config: bad number of stop bits")
-	ErrConfigSize     = errors.New("goserial config: bad size")
+	ErrConfigByteSize = errors.New("goserial config: bad byte size")
 	ErrConfigParity   = errors.New("goserial config: bad parity")
 )
 
 type ParityMode byte
 
 const (
-	ParityNone = iota
+	ParityNone = ParityMode(iota)
 	ParityEven
 	ParityOdd
+)
+
+type ByteSize byte
+
+const (
+	Byte8 = ByteSize(iota)
+	Byte5
+	Byte6
+	Byte7
+)
+
+type StopBits byte
+
+const (
+	StopBits1 = StopBits(iota)
+	StopBits2
 )
 
 // Config contains the information needed to open a serial port.
@@ -92,9 +108,9 @@ type Config struct {
 	Name string
 	Baud int
 
-	Size     int // 0 get translated to 8
+	Size     ByteSize
 	Parity   ParityMode
-	StopBits int // 0 (default) and 1 means 1 stop bit, 2 means 2 stop bits
+	StopBits StopBits
 
 	// RTSFlowControl bool
 	// DTRFlowControl bool
@@ -104,36 +120,34 @@ type Config struct {
 	// TimeoutStuff int
 }
 
-func (c *Config) size() (int, error) {
+func (c *Config) check() error {
 	switch c.Size {
-	case 0:
-		return 8, nil
-	case 5, 6, 7, 8:
-		return c.Size, nil
+	case Byte5, Byte6, Byte7, Byte8:
+	default:
+		return ErrConfigByteSize
 	}
-	return 0, ErrConfigSize
-}
 
-func (c *Config) stopBits() (int, error) {
 	switch c.StopBits {
-	case 0:
-		return 1, nil
-	case 1, 2:
-		return c.StopBits, nil
+	case StopBits1, StopBits2:
+	default:
+		return ErrConfigParity
 	}
-	return 0, ErrConfigStopBits
-}
 
-func (c *Config) checkParityMode() error {
 	switch c.Parity {
 	case ParityNone, ParityEven, ParityOdd:
-		return nil
+	default:
+		return ErrConfigParity
 	}
-	return ErrConfigParity
+
+	return nil
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
+	if err := c.check(); err != nil {
+		return nil, err
+	}
+
 	return openPort(c.Name, c)
 }
 

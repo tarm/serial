@@ -171,31 +171,39 @@ func setCommState(h syscall.Handle, c *Config) error {
 	params.BaudRate = uint32(baud)
 
 	// Select byte size.
-	if _, err := c.size(); err != nil {
-		return err
+	switch c.Size {
+	case Byte5:
+		params.ByteSize = 5
+	case Byte6:
+		params.ByteSize = 6
+	case Byte7:
+		params.ByteSize = 7
+	case Byte8:
+		params.ByteSize = 8
+	default:
+		panic(c.Size)
 	}
-	params.ByteSize = byte(c.Size)
 
 	// Select parity mode.
-	if parity, err := c.parity(); err != nil {
-		return err
-	} else switch parity {
+	switch c.Parity {
 	case ParityNone:
 		params.Parity = 0
 	case ParityEven:
 		params.Parity = 2
 	case ParityOdd:
 		params.Parity = 1
+	default:
+		panic(c.Parity)
 	}
 
 	// Selet stop bits.
-	if stopBits, err := c.stopBits(); err != nil {
-		return err
-	} else switch stopBits {
-	case 1:
+	switch c.StopBits {
+	case StopBits1:
 		params.StopBits = 0
-	case 2:
+	case StopBits2:
 		params.StopBits = 2
+	default:
+		panic(c.StopBits)
 	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
