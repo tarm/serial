@@ -80,13 +80,13 @@ func openPort(name string, c *Config) (rwc io.ReadWriteCloser, err error) {
 	// Select character size
 	st.c_cflag &^= C.CSIZE
 	switch c.Size {
-	case 5:
+	case Byte5:
 		st.c_cflag |= C.CS5
-	case 6:
+	case Byte6:
 		st.c_cflag |= C.CS6
-	case 7:
+	case Byte7:
 		st.c_cflag |= C.CS7
-	case 8:
+	case Byte8:
 		st.c_cflag |= C.CS8
 	default:
 		panic(c.Size)
