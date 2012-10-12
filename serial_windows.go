@@ -168,7 +168,7 @@ func setCommState(h syscall.Handle, c *Config) error {
 	params.flags[0] = 0x01  // fBinary
 	params.flags[0] |= 0x10 // Assert DSR
 
-	params.BaudRate = uint32(baud)
+	params.BaudRate = uint32(c.Baud)
 
 	// Select byte size.
 	switch c.Size {
