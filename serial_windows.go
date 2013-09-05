@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, block bool) (rwc io.ReadWriteCloser, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -65,7 +65,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	if err = setupComm(h, 64, 64); err != nil {
 		return
 	}
-	if err = setCommTimeouts(h); err != nil {
+	if err = setCommTimeouts(h, block); err != nil {
 		return
 	}
 	if err = setCommMask(h); err != nil {
@@ -178,13 +178,18 @@ func setCommState(h syscall.Handle, baud int) error {
 	return nil
 }
 
-func setCommTimeouts(h syscall.Handle) error {
+func setCommTimeouts(h syscall.Handle, bool block) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
-	timeouts.ReadIntervalTimeout = MAXDWORD
-	timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
-	timeouts.ReadTotalTimeoutConstant = MAXDWORD - 1
-
+    if block {
+        timeouts.ReadIntervalTimeout = MAXDWORD
+        timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
+        timeouts.ReadTotalTimeoutConstant = MAXDWORD - 1
+    else {
+        timeouts.ReadIntervalTimeout = MAXDWORD
+        timeouts.ReadTotalTimeoutMultiplier = 0
+        timeouts.ReadTotalTimeoutConstant = 0
+    }
 	/* From http://msdn.microsoft.com/en-us/library/aa363190(v=VS.85).aspx
 
 		 For blocking I/O see below:
