@@ -76,8 +76,7 @@ func openPort(name string, baud int, block bool) (rwc io.ReadWriteCloser, err er
 	st.c_cflag |= (C.CLOCAL | C.CREAD)
 
 	// Select raw mode
-	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
-	st.c_oflag &= ^C.tcflag_t(C.OPOST)
+    C.cfmakeraw(&st)
 
 	_, err = C.tcsetattr(fd, C.TCSANOW, &st)
 	if err != nil {
