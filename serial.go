@@ -84,12 +84,12 @@ type Config struct {
 	// XONFlowControl bool
 
 	// CRLFTranslate bool
-	// TimeoutStuff int
+	Blocking bool
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
-	return openPort(c.Name, c.Baud)
+	return openPort(c.Name, c.Baud, c.Blocking)
 }
 
 // func Flush()
