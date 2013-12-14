@@ -1,6 +1,6 @@
 // +build windows
 
-package serial
+package goserial
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, c *Config) (rwc io.ReadWriteCloser, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -59,7 +59,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	if err = setCommState(h, baud); err != nil {
+	if err = setCommState(h, c); err != nil {
 		return
 	}
 	if err = setupComm(h, 64, 64); err != nil {
@@ -161,15 +161,50 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func setCommState(h syscall.Handle, baud int) error {
+func setCommState(h syscall.Handle, c *Config) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
 	params.flags[0] = 0x01  // fBinary
 	params.flags[0] |= 0x10 // Assert DSR
 
-	params.BaudRate = uint32(baud)
-	params.ByteSize = 8
+	params.BaudRate = uint32(c.Baud)
+
+	// Select byte size.
+	switch c.Size {
+	case Byte5:
+		params.ByteSize = 5
+	case Byte6:
+		params.ByteSize = 6
+	case Byte7:
+		params.ByteSize = 7
+	case Byte8:
+		params.ByteSize = 8
+	default:
+		panic(c.Size)
+	}
+
+	// Select parity mode.
+	switch c.Parity {
+	case ParityNone:
+		params.Parity = 0
+	case ParityEven:
+		params.Parity = 2
+	case ParityOdd:
+		params.Parity = 1
+	default:
+		panic(c.Parity)
+	}
+
+	// Selet stop bits.
+	switch c.StopBits {
+	case StopBits1:
+		params.StopBits = 0
+	case StopBits2:
+		params.StopBits = 2
+	default:
+		panic(c.StopBits)
+	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
 	if r == 0 {

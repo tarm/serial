@@ -16,10 +16,10 @@ connection.  Read() will block until at least one byte is returned.
 Write is the same.  There is currently no exposed way to set the
 timeouts, though patches are welcome.
 
-Currently all ports are opened with 8 data bits, 1 stop bit, no
-parity, no hardware flow control, and no software flow control.  This
-works fine for many real devices and many faux serial devices
-including usb-to-serial converters and bluetooth serial ports.
+Currently ports are opened with 8 data bits, 1 stop bit, no parity, no hardware
+flow control, and no software flow control by default.  This works fine for
+many real devices and many faux serial devices including usb-to-serial
+converters and bluetooth serial ports.
 
 You may Read() and Write() simulantiously on the same connection (from
 different goroutines).
@@ -53,9 +53,42 @@ Example usage:
         log.Print("%q", buf[:n])
   }
 */
-package serial
+package goserial
 
-import "io"
+import (
+	"errors"
+	"io"
+)
+
+var (
+	ErrConfigStopBits = errors.New("goserial config: bad number of stop bits")
+	ErrConfigByteSize = errors.New("goserial config: bad byte size")
+	ErrConfigParity   = errors.New("goserial config: bad parity")
+)
+
+type ParityMode byte
+
+const (
+	ParityNone = ParityMode(iota)
+	ParityEven
+	ParityOdd
+)
+
+type ByteSize byte
+
+const (
+	Byte8 = ByteSize(iota)
+	Byte5
+	Byte6
+	Byte7
+)
+
+type StopBits byte
+
+const (
+	StopBits1 = StopBits(iota)
+	StopBits2
+)
 
 // Config contains the information needed to open a serial port.
 //
@@ -75,21 +108,47 @@ type Config struct {
 	Name string
 	Baud int
 
-	// Size     int // 0 get translated to 8
-	// Parity   SomeNewTypeToGetCorrectDefaultOf_None
-	// StopBits SomeNewTypeToGetCorrectDefaultOf_1
+	Size     ByteSize
+	Parity   ParityMode
+	StopBits StopBits
 
 	// RTSFlowControl bool
 	// DTRFlowControl bool
 	// XONFlowControl bool
 
-	// CRLFTranslate bool
+	CRLFTranslate bool // Ignored on Windows.
 	// TimeoutStuff int
+}
+
+func (c *Config) check() error {
+	switch c.Size {
+	case Byte5, Byte6, Byte7, Byte8:
+	default:
+		return ErrConfigByteSize
+	}
+
+	switch c.StopBits {
+	case StopBits1, StopBits2:
+	default:
+		return ErrConfigParity
+	}
+
+	switch c.Parity {
+	case ParityNone, ParityEven, ParityOdd:
+	default:
+		return ErrConfigParity
+	}
+
+	return nil
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
-	return openPort(c.Name, c.Baud)
+	if err := c.check(); err != nil {
+		return nil, err
+	}
+
+	return openPort(c.Name, c)
 }
 
 // func Flush()
