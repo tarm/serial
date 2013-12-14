@@ -46,6 +46,10 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 
     rate := bauds[baud]
 
+    if rate == 0 {
+        return
+    }
+
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return nil, err
