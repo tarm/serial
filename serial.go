@@ -92,6 +92,42 @@ func OpenPort(c *Config) (io.ReadWriteCloser, error) {
 	return openPort(c.Name, c.Baud)
 }
 
+// OpenPortChan opens a serial port and returns a channel for writing to and a channel for reading
+// from it.
+func OpenPortChan(c *Config) (chan<- []byte, <-chan []byte, error) {
+	port, err := OpenPort(c)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sndChan := make(chan []byte)
+	rcvChan := make(chan []byte)
+
+	go func() {
+		for {
+			sndBuf, ok := <-sndChan
+			if ok {
+				port.Write(sndBuf)
+			} else {
+				port.Close()
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			rcvBuf := make([]byte, 4096)
+			n, err := port.Read(rcvBuf)
+			if err != nil {
+				panic(err)
+			}
+			rcvChan <- rcvBuf[:n]
+		}
+	}()
+
+	return sndChan, rcvChan, nil
+}
+
 // func Flush()
 
 // func SendBreak()
