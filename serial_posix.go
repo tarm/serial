@@ -14,11 +14,10 @@ import (
 	"io"
 	"os"
 	"syscall"
-	//"unsafe"
 )
 
 func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
-	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
+	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY, 0666)
 	if err != nil {
 		return
 	}
@@ -79,29 +78,6 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 		f.Close()
 		return nil, err
 	}
-
-	//fmt.Println("Tweaking", name)
-	r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
-		uintptr(f.Fd()),
-		uintptr(syscall.F_SETFL),
-		uintptr(0))
-	if e != 0 || r1 != 0 {
-		s := fmt.Sprint("Clearing NONBLOCK syscall error:", e, r1)
-		f.Close()
-		return nil, errors.New(s)
-	}
-
-	/*
-				r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
-			                uintptr(f.Fd()),
-			                uintptr(0x80045402), // IOSSIOSPEED
-			                uintptr(unsafe.Pointer(&baud)));
-			        if e != 0 || r1 != 0 {
-			                s := fmt.Sprint("Baudrate syscall error:", e, r1)
-					f.Close()
-		                        return nil, os.NewError(s)
-				}
-	*/
 
 	return f, nil
 }
