@@ -2,38 +2,60 @@ package serial
 
 import (
 	"testing"
+	"time"
 )
 
 func TestConnection(t *testing.T) {
-	if testing.Short() {
-		return
-	}
-	c0 := &Config{Name: "COM5", Baud: 115200}
+	c0 := &Config{Name: "/dev/ttyUSB0", Baud: 115200}
+	c1 := &Config{Name: "/dev/ttyUSB1", Baud: 115200}
 
-	/*
-		c1 := new(Config)
-		c1.Name = "COM5"
-		c1.Baud = 115200
-	*/
-
-	s, err := OpenPort(c0)
+	s1, err := OpenPort(c0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = s.Write([]byte("test"))
+	s2, err := OpenPort(c1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	buf := make([]byte, 128)
-	_, err = s.Read(buf)
-	if err != nil {
+	ch := make(chan int, 1)
+	go func() {
+		buf := make([]byte, 128)
+		var readCount int
+		for {
+			n, err := s2.Read(buf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			readCount++
+			t.Logf("Read %v %v bytes: % 02x %s", readCount, n, buf[:n], buf[:n])
+			select {
+			case <-ch:
+				ch <- readCount
+				close(ch)
+			default:
+			}
+		}
+	}()
+
+	if _, err = s1.Write([]byte("hello")); err != nil {
 		t.Fatal(err)
 	}
-}
+	if _, err = s1.Write([]byte(" ")); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
+	if _, err = s1.Write([]byte("world")); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second / 10)
 
-// BUG(tarmigan): Add loopback test
-func TestLoopback(t *testing.T) {
-
+	ch <- 0
+	s1.Write([]byte(" ")) // We could be blocked in the read without this
+	c := <-ch
+	exp := 5
+	if c >= exp {
+		t.Fatalf("Expected less than %v read, got %v", exp, c)
+	}
 }
