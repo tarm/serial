@@ -67,8 +67,12 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 		return nil, err
 	}
 
-	// Select local mode
-	st.c_cflag |= (C.CLOCAL | C.CREAD)
+	// Turn off break interrupts, CR->NL, Parity checks, strip, and IXON
+	st.c_iflag &= ^C.tcflag_t(C.BRKINT | C.ICRNL | C.INPCK | C.ISTRIP | C.IXOFF | C.IXON | C.PARMRK)
+
+	// Select local mode, turn off parity, set to 8 bits
+	st.c_cflag &= ^C.tcflag_t(C.CSIZE | C.PARENB)
+	st.c_cflag |= (C.CLOCAL | C.CREAD | C.CS8)
 
 	// Select raw mode
 	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
