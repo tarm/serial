@@ -1,4 +1,4 @@
-// +build !windows,cgo
+// +build !windows,!darwin,cgo
 
 package serial
 
