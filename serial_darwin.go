@@ -9,6 +9,7 @@ import (
 	"unsafe"
 )
 
+// Darwin specific IOCTL constants
 const (
 	IOSSIOSPEED = 0x80045402 // _IOW('T', 2, speed_t)
 )
@@ -44,15 +45,15 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 
 	// These are mostly torn out of the pyserial implementation
 	// Clear char-size, stop-bits, even and odd parity as well as xon/xoff
-	t.Cflag &^= (syscall.CSIZE | syscall.CSTOPB | syscall.PARENB | syscall.PARODD | syscall.IXON | syscall.IXOFF)
+	t.Cflag &^= (syscall.CSIZE | syscall.CSTOPB | syscall.PARENB | syscall.PARODD | syscall.IXANY | syscall.IXON | syscall.IXOFF)
 	// Ignore modem control lines, enable receiver, 8-bit char-size
 	t.Cflag |= (syscall.CLOCAL | syscall.CREAD | syscall.CS8)
 	// Disable canonical mode, echo, echo erase, echo kill, echo newline, signal on INTR/QUIT/SUSP/DSUSP characters, impl. defined input processing
 	t.Lflag &^= (syscall.ICANON | syscall.ECHO | syscall.ECHOE | syscall.ECHOK | syscall.ECHONL | syscall.ISIG | syscall.IEXTEN)
 	// Disable impl. defined output processing
 	t.Oflag &^= (syscall.OPOST)
-	// Disable NL->CR translation, carriage-return ignore, CR->NL translation, break ignore
-	t.Iflag &^= (syscall.INLCR | syscall.IGNCR | syscall.ICRNL | syscall.IGNBRK)
+	// Disable parity error marking, input parity checking, strip eighth bit, NL->CR translation, carriage-return ignore, CR->NL translation, break ignore
+	t.Iflag &^= (syscall.PARMRK | syscall.INPCK | syscall.ISTRIP | syscall.INLCR | syscall.IGNCR | syscall.ICRNL | syscall.IGNBRK)
 
 	// Minimum bytes for read
 	t.Cc[syscall.VMIN] = 1
