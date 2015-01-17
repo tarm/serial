@@ -58,6 +58,15 @@ func main() {
 }
 ```
 
+NonBlocking Mode
+----------------
+	
+```go	
+	c := &serial.Config{Name: "COM45", Baud: 115200, NonBlockingRead: true, ReadTimeout: 1000}
+	// On Windows, ReadTimeout is in milliseconds (1000 = 1sec)
+	// where as on Linux and POSIX systems, ReadTimeout is in deciseconds (10 = 1sec)
+```
+
 Possible Future Work
 -------------------- 
 - better tests (loopback etc)

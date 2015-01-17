@@ -9,7 +9,7 @@ import (
 	"unsafe"
 )
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, nonBlockingRead bool, readTimeout uint32) (rwc io.ReadWriteCloser, err error) {
 
 	var bauds = map[int]uint32{
 		50:      syscall.B50,
@@ -62,10 +62,15 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	}()
 
 	fd := f.Fd()
+	// set blocking / non-blocking read
+	var minBytesToRead uint8 = 1
+	if nonBlockingRead == true {
+		minBytesToRead = 0
+	}
 	t := syscall.Termios{
 		Iflag:  syscall.IGNPAR,
 		Cflag:  syscall.CS8 | syscall.CREAD | syscall.CLOCAL | rate,
-		Cc:     [32]uint8{syscall.VMIN: 1},
+		Cc:     [32]uint8{syscall.VMIN: minBytesToRead, syscall.VTIME: uint8(readTimeout)},
 		Ispeed: rate,
 		Ospeed: rate,
 	}

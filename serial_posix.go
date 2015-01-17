@@ -17,7 +17,7 @@ import (
 	//"unsafe"
 )
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, nonBlockingRead bool, readTimeout uint32) (rwc io.ReadWriteCloser, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -77,7 +77,19 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	// Select raw mode
 	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
 	st.c_oflag &= ^C.tcflag_t(C.OPOST)
-
+	
+	// set blocking / non-blocking read
+	var minBytesToRead uint8 = 1	
+	if nonBlockingRead == true {
+		// EOF on zero read
+		minBytesToRead = 0
+	}
+	st.c_cc[C.VMIN] = C.cc_t(minBytesToRead)
+	st.c_cc[C.VTIME] = C.cc_t(readTimeout)
+	
+	st.c_oflag &= ^C.tcflag_t(C.OPOST)
+	st.c_oflag &= ^C.tcflag_t(C.OPOST)
+	
 	_, err = C.tcsetattr(fd, C.TCSANOW, &st)
 	if err != nil {
 		f.Close()

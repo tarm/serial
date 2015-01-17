@@ -65,11 +65,13 @@ import "io"
 //
 // For example:
 //
-//    c0 := &serial.Config{Name: "COM45", Baud: 115200}
+//    c0 := &serial.Config{Name: "COM45", Baud: 115200, NonBlockingRead: true, ReadTimeout: 1000}
 // or
 //    c1 := new(serial.Config)
 //    c1.Name = "/dev/tty.usbserial"
 //    c1.Baud = 115200
+//    c1.NonBlockingRead = true
+//    c1.ReadTimeout = 1000
 //
 type Config struct {
 	Name string
@@ -84,12 +86,13 @@ type Config struct {
 	// XONFlowControl bool
 
 	// CRLFTranslate bool
-	// TimeoutStuff int
+	NonBlockingRead bool
+	ReadTimeout     uint32
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
-	return openPort(c.Name, c.Baud)
+	return openPort(c.Name, c.Baud, c.NonBlockingRead, c.ReadTimeout)
 }
 
 // func Flush()
