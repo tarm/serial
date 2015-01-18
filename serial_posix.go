@@ -17,7 +17,7 @@ import (
 	//"unsafe"
 )
 
-func openPort(name string, baud int, nonBlockingRead bool, readTimeout uint32) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout uint32) (rwc io.ReadWriteCloser, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -77,19 +77,30 @@ func openPort(name string, baud int, nonBlockingRead bool, readTimeout uint32) (
 	// Select raw mode
 	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
 	st.c_oflag &= ^C.tcflag_t(C.OPOST)
-	
+
 	// set blocking / non-blocking read
-	var minBytesToRead uint8 = 1	
-	if nonBlockingRead == true {
+	/*
+	*	http://man7.org/linux/man-pages/man3/termios.3.html
+	* - Supports blocking read and read with timeout operations
+	 */
+	var minBytesToRead uint8 = 1
+	if readTimeout > 0 {
 		// EOF on zero read
 		minBytesToRead = 0
+		// capping the timeout
+		if readTimeout < 100 {
+			// min possible timeout
+			readTimeout = 100
+		} else if readTimeout > 25500 {
+			// max possible timeout
+			readTimeout = 25500
+		}
+		// convert milliseconds to deciseconds as expected by VTIME
+		readTimeout = readTimeout / 100
 	}
 	st.c_cc[C.VMIN] = C.cc_t(minBytesToRead)
 	st.c_cc[C.VTIME] = C.cc_t(readTimeout)
-	
-	st.c_oflag &= ^C.tcflag_t(C.OPOST)
-	st.c_oflag &= ^C.tcflag_t(C.OPOST)
-	
+
 	_, err = C.tcsetattr(fd, C.TCSANOW, &st)
 	if err != nil {
 		f.Close()

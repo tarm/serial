@@ -60,11 +60,17 @@ func main() {
 
 NonBlocking Mode
 ----------------
+By default goserial reads in blocking mode. Which means Read() will
+block until at least one byte is returned. If that's not what you want,
+specify a ReadTimeout in milliseconds and the Read() will timeout
+returning 0 bytes if no bytes are read.
+
+```go
+	c := &serial.Config{Name: "COM45", Baud: 115200, ReadTimeout: 1000}
 	
-```go	
-	c := &serial.Config{Name: "COM45", Baud: 115200, NonBlockingRead: true, ReadTimeout: 1000}
-	// On Windows, ReadTimeout is in milliseconds (1000 = 1sec)
-	// where as on Linux and POSIX systems, ReadTimeout is in deciseconds (10 = 1sec)
+	// In this mode, you will want to suppress error for read
+	// as 0 bytes returns EOF error on Linux / POSIX
+	n, _ = s.Read(buf)
 ```
 
 Possible Future Work
