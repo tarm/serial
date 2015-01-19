@@ -55,7 +55,10 @@ Example usage:
 */
 package serial
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 // Config contains the information needed to open a serial port.
 //
@@ -65,16 +68,17 @@ import "io"
 //
 // For example:
 //
-//    c0 := &serial.Config{Name: "COM45", Baud: 115200, ReadTimeout: 1000}
+//    c0 := &serial.Config{Name: "COM45", Baud: 115200, ReadTimeout: time.Millisecond * 500}
 // or
 //    c1 := new(serial.Config)
 //    c1.Name = "/dev/tty.usbserial"
 //    c1.Baud = 115200
-//    c1.ReadTimeout = 1000
+//    c1.ReadTimeout = time.Millisecond * 500
 //
 type Config struct {
-	Name string
-	Baud int
+	Name        string
+	Baud        int
+	ReadTimeout time.Duration // Total timeout
 
 	// Size     int // 0 get translated to 8
 	// Parity   SomeNewTypeToGetCorrectDefaultOf_None
@@ -85,12 +89,36 @@ type Config struct {
 	// XONFlowControl bool
 
 	// CRLFTranslate bool
-	ReadTimeout uint32
 }
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (io.ReadWriteCloser, error) {
 	return openPort(c.Name, c.Baud, c.ReadTimeout)
+}
+
+// Converts the timeout values for Linux / POSIX systems
+func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
+	const MAXUINT8 = 1<<8 - 1 // 255
+	// set blocking / non-blocking read
+	var minBytesToRead uint8 = 1
+	var readTimeoutInDeci uint8 = 0
+	if readTimeout > 0 {
+		// EOF on zero read
+		minBytesToRead = 0
+		timeoutMs := uint32(readTimeout.Nanoseconds() / 1e6)
+		// capping the timeout
+		if timeoutMs < 100 {
+			// min possible timeout 1 Deciseconds (0.1s)
+			readTimeoutInDeci = 1
+		} else if timeoutMs > (MAXUINT8 * 100) {
+			// max possible timeout is 255 Deciseconds (25.5s)
+			readTimeoutInDeci = MAXUINT8
+		} else {
+			// convert milliseconds to deciseconds as expected by VTIME
+			readTimeoutInDeci = uint8(timeoutMs / 100)
+		}
+	}
+	return minBytesToRead, readTimeoutInDeci
 }
 
 // func Flush()

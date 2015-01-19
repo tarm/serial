@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -37,7 +38,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int, readTimeout uint32) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -178,14 +179,16 @@ func setCommState(h syscall.Handle, baud int) error {
 	return nil
 }
 
-func setCommTimeouts(h syscall.Handle, readTimeout uint32) error {
+func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
-	if readTimeout > 0 {
+	timeoutMs := uint32(readTimeout.Nanoseconds() / 1e6)
+
+	if timeoutMs > 0 {
 		// non-blocking read
-		timeouts.ReadIntervalTimeout = 1000
+		timeouts.ReadIntervalTimeout = 0
 		timeouts.ReadTotalTimeoutMultiplier = 0
-		timeouts.ReadTotalTimeoutConstant = readTimeout
+		timeouts.ReadTotalTimeoutConstant = timeoutMs
 	} else {
 		// blocking read
 		timeouts.ReadIntervalTimeout = MAXDWORD
