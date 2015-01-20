@@ -182,13 +182,18 @@ func setCommState(h syscall.Handle, baud int) error {
 func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
-	timeoutMs := uint32(readTimeout.Nanoseconds() / 1e6)
 
-	if timeoutMs > 0 {
+	if readTimeout > 0 {
 		// non-blocking read
+		timeoutMs := readTimeout.Nanoseconds() / 1e6
+		if timeoutMs < 1 {
+			timeoutMs = 1
+		} else if timeoutMs > MAXDWORD {
+			timeoutMs = MAXDWORD
+		}
 		timeouts.ReadIntervalTimeout = 0
 		timeouts.ReadTotalTimeoutMultiplier = 0
-		timeouts.ReadTotalTimeoutConstant = timeoutMs
+		timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
 	} else {
 		// blocking read
 		timeouts.ReadIntervalTimeout = MAXDWORD

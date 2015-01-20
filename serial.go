@@ -101,24 +101,22 @@ func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
 	const MAXUINT8 = 1<<8 - 1 // 255
 	// set blocking / non-blocking read
 	var minBytesToRead uint8 = 1
-	var readTimeoutInDeci uint8 = 0
+	var readTimeoutInDeci int64
 	if readTimeout > 0 {
 		// EOF on zero read
 		minBytesToRead = 0
-		timeoutMs := uint32(readTimeout.Nanoseconds() / 1e6)
+		// convert timeout to deciseconds as expected by VTIME
+		readTimeoutInDeci = (readTimeout.Nanoseconds() / 1e6 / 100)
 		// capping the timeout
-		if timeoutMs < 100 {
+		if readTimeoutInDeci < 1 {
 			// min possible timeout 1 Deciseconds (0.1s)
 			readTimeoutInDeci = 1
-		} else if timeoutMs > (MAXUINT8 * 100) {
-			// max possible timeout is 255 Deciseconds (25.5s)
+		} else if readTimeoutInDeci > MAXUINT8 {
+			// max possible timeout is 255 deciseconds (25.5s)
 			readTimeoutInDeci = MAXUINT8
-		} else {
-			// convert milliseconds to deciseconds as expected by VTIME
-			readTimeoutInDeci = uint8(timeoutMs / 100)
 		}
 	}
-	return minBytesToRead, readTimeoutInDeci
+	return minBytesToRead, uint8(readTimeoutInDeci)
 }
 
 // func Flush()
