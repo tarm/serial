@@ -6,10 +6,11 @@ import (
 	"io"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
 
 	var bauds = map[int]uint32{
 		50:      syscall.B50,
@@ -62,10 +63,11 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	}()
 
 	fd := f.Fd()
+	vmin, vtime := posixTimeoutValues(readTimeout)
 	t := syscall.Termios{
 		Iflag:  syscall.IGNPAR,
 		Cflag:  syscall.CS8 | syscall.CREAD | syscall.CLOCAL | rate,
-		Cc:     [32]uint8{syscall.VMIN: 1},
+		Cc:     [32]uint8{syscall.VMIN: vmin, syscall.VTIME: vtime},
 		Ispeed: rate,
 		Ospeed: rate,
 	}
