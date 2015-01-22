@@ -3,14 +3,13 @@
 package serial
 
 import (
-	"io"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout time.Duration) (rwfc ReadWriteFlushCloser, err error) {
 
 	var bauds = map[int]uint32{
 		50:      syscall.B50,

@@ -91,8 +91,13 @@ type Config struct {
 	// CRLFTranslate bool
 }
 
+type ReadWriteFlushCloser interface {
+	io.ReadWriteCloser
+	Flush() error
+}
+
 // OpenPort opens a serial port with the specified configuration
-func OpenPort(c *Config) (io.ReadWriteCloser, error) {
+func OpenPort(c *Config) (ReadWriteFlushCloser, error) {
 	return openPort(c.Name, c.Baud, c.ReadTimeout)
 }
 
@@ -118,8 +123,6 @@ func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
 	}
 	return minBytesToRead, uint8(readTimeoutInDeci)
 }
-
-// func Flush()
 
 // func SendBreak()
 

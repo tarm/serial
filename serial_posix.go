@@ -11,14 +11,18 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"syscall"
 	"time"
 	//"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
+type serialPort struct {
+	f  *os.File
+	fd C.int
+}
+
+func openPort(name string, baud int, readTimeout time.Duration) (rwfc ReadWriteFlushCloser, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -116,6 +120,25 @@ func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWrit
 		                        return nil, os.NewError(s)
 				}
 	*/
+	port := new(serialPort)
+	port.f = f
+	port.fd = fd
+	return port, nil
+}
 
-	return f, nil
+func (p *serialPort) Read(buf []byte) (int, error) {
+	return p.f.Read(buf)
+}
+
+func (p *serialPort) Write(buf []byte) (int, error) {
+	return p.f.Write(buf)
+}
+
+func (p *serialPort) Flush() error {
+	_, err := C.tcflush(p.fd, C.TCIOFLUSH)
+	return err
+}
+
+func (p *serialPort) Close() error {
+	return p.f.Close()
 }
