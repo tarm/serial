@@ -11,14 +11,13 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"syscall"
 	"time"
 	//"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -117,5 +116,23 @@ func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWrit
 				}
 	*/
 
-	return f, nil
+	return &Port{f: f}, nil
+}
+
+type Port struct {
+	// We intentionly do not use an "embedded" struct so that we
+	// don't export File
+	f *os.File
+}
+
+func (p *Port) Read(b []byte) (n int, err error) {
+	return p.f.Read(b)
+}
+
+func (p *Port) Write(b []byte) (n int, err error) {
+	return p.f.Write(b)
+}
+
+func (p *Port) Close() (err error) {
+	return p.f.Close()
 }

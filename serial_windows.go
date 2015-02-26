@@ -4,7 +4,6 @@ package serial
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -12,7 +11,7 @@ import (
 	"unsafe"
 )
 
-type serialPort struct {
+type Port struct {
 	f  *os.File
 	fd syscall.Handle
 	rl sync.Mutex
@@ -38,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
+func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -81,7 +80,7 @@ func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWrit
 	if err != nil {
 		return
 	}
-	port := new(serialPort)
+	port := new(Port)
 	port.f = f
 	port.fd = h
 	port.ro = ro
@@ -90,11 +89,11 @@ func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWrit
 	return port, nil
 }
 
-func (p *serialPort) Close() error {
+func (p *Port) Close() error {
 	return p.f.Close()
 }
 
-func (p *serialPort) Write(buf []byte) (int, error) {
+func (p *Port) Write(buf []byte) (int, error) {
 	p.wl.Lock()
 	defer p.wl.Unlock()
 
@@ -109,7 +108,7 @@ func (p *serialPort) Write(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.wo)
 }
 
-func (p *serialPort) Read(buf []byte) (int, error) {
+func (p *Port) Read(buf []byte) (int, error) {
 	if p == nil || p.f == nil {
 		return 0, fmt.Errorf("Invalid port on read %v %v", p, p.f)
 	}

@@ -3,15 +3,13 @@
 package serial
 
 import (
-	"io"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWriteCloser, err error) {
-
+func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
 	var bauds = map[int]uint32{
 		50:      syscall.B50,
 		75:      syscall.B75,
@@ -88,5 +86,23 @@ func openPort(name string, baud int, readTimeout time.Duration) (rwc io.ReadWrit
 		return
 	}
 
-	return f, nil
+	return &Port{f: f}, nil
+}
+
+type Port struct {
+	// We intentionly do not use an "embedded" struct so that we
+	// don't export File
+	f *os.File
+}
+
+func (p *Port) Read(b []byte) (n int, err error) {
+	return p.f.Read(b)
+}
+
+func (p *Port) Write(b []byte) (n int, err error) {
+	return p.f.Write(b)
+}
+
+func (p *Port) Close() (err error) {
+	return p.f.Close()
 }
