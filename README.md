@@ -55,7 +55,7 @@ func main() {
         if err != nil {
                 log.Fatal(err)
         }
-        log.Print("%q", buf[:n])
+        log.Printf("%q", buf[:n])
 }
 ```
 
