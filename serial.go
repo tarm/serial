@@ -118,8 +118,6 @@ func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
 	return minBytesToRead, uint8(readTimeoutInDeci)
 }
 
-// func Flush()
-
 // func SendBreak()
 
 // func RegisterBreakHandler(func())

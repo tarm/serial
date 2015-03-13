@@ -127,6 +127,10 @@ func (p *Port) Read(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.ro)
 }
 
+func (p *Port) Flush() error {
+	return purgeComm(p.fd)
+}
+
 var (
 	nSetCommState,
 	nSetCommTimeouts,
@@ -134,7 +138,9 @@ var (
 	nSetupComm,
 	nGetOverlappedResult,
 	nCreateEvent,
-	nResetEvent uintptr
+	nResetEvent,
+	nPurgeComm,
+	nFlushFileBuffers uintptr
 )
 
 func init() {
@@ -151,6 +157,8 @@ func init() {
 	nGetOverlappedResult = getProcAddr(k32, "GetOverlappedResult")
 	nCreateEvent = getProcAddr(k32, "CreateEventW")
 	nResetEvent = getProcAddr(k32, "ResetEvent")
+	nPurgeComm = getProcAddr(k32, "PurgeComm")
+	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
@@ -248,6 +256,19 @@ func setCommMask(h syscall.Handle) error {
 
 func resetEvent(h syscall.Handle) error {
 	r, _, err := syscall.Syscall(nResetEvent, 1, uintptr(h), 0, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func purgeComm(h syscall.Handle) error {
+	const PURGE_TXABORT = 0x0001
+	const PURGE_RXABORT = 0x0002
+	const PURGE_TXCLEAR = 0x0004
+	const PURGE_RXCLEAR = 0x0008
+	r, _, err := syscall.Syscall(nPurgeComm, 2, uintptr(h),
+		PURGE_TXABORT|PURGE_RXABORT|PURGE_TXCLEAR|PURGE_RXCLEAR, 0)
 	if r == 0 {
 		return err
 	}
