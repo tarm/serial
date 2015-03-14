@@ -127,6 +127,8 @@ func (p *Port) Read(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.ro)
 }
 
+// Discards data written to the port but not transmitted,
+// or data received but not read
 func (p *Port) Flush() error {
 	return purgeComm(p.fd)
 }

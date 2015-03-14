@@ -133,6 +133,8 @@ func (p *Port) Write(b []byte) (n int, err error) {
 	return p.f.Write(b)
 }
 
+// Discards data written to the port but not transmitted,
+// or data received but not read
 func (p *Port) Flush() error {
 	_, err := C.tcflush(C.int(p.f.Fd()), C.TCIOFLUSH)
 	return err
