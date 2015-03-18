@@ -56,6 +56,7 @@ Example usage:
 package serial
 
 import (
+	"io"
 	"time"
 )
 
@@ -90,8 +91,19 @@ type Config struct {
 	// CRLFTranslate bool
 }
 
+type Flusher interface {
+	Flush() error
+}
+
+type ReadWriteCloseFlusher interface {
+	io.Reader
+	io.Writer
+	io.Closer
+	Flusher
+}
+
 // OpenPort opens a serial port with the specified configuration
-func OpenPort(c *Config) (*Port, error) {
+func OpenPort(c *Config) (ReadWriteCloseFlusher, error) {
 	return openPort(c.Name, c.Baud, c.ReadTimeout)
 }
 
