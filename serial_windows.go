@@ -142,8 +142,11 @@ var (
 	nCreateEvent,
 	nResetEvent,
 	nPurgeComm,
+	nEscapeCommFunction,
+        nGetCommModemStatus,
 	nFlushFileBuffers uintptr
 )
+
 
 func init() {
 	k32, err := syscall.LoadLibrary("kernel32.dll")
@@ -161,6 +164,53 @@ func init() {
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 	nPurgeComm = getProcAddr(k32, "PurgeComm")
 	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
+	nEscapeCommFunction = getProcAddr(k32, "EscapeCommFunction")
+	nGetCommModemStatus = getProcAddr(k32, "GetCommModemStatus")
+}
+
+func (p *Port) SetDtrOn() error {
+	const SETDTR = 0x0005
+
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), SETDTR, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+func (p *Port) SetDtrOff() error {
+	const CLRDTR = 0x0006
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), CLRDTR, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOff() error {
+	const CLRRTS = 0x0004
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), CLRRTS, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOn() error {
+	const SETRTS = 0x0003
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), SETRTS, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) GetStatus() (error, byte) {
+	var statusval byte;
+	r, _, err := syscall.Syscall(nGetCommModemStatus, 2, uintptr(p.fd), uintptr(unsafe.Pointer(&statusval)), 0)
+	if r == 0 {
+		return err, 0x0
+	}
+	return nil, statusval
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
