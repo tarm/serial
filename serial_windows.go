@@ -143,10 +143,9 @@ var (
 	nResetEvent,
 	nPurgeComm,
 	nEscapeCommFunction,
-        nGetCommModemStatus,
+	nGetCommModemStatus,
 	nFlushFileBuffers uintptr
 )
-
 
 func init() {
 	k32, err := syscall.LoadLibrary("kernel32.dll")
@@ -206,36 +205,36 @@ func (p *Port) SetRtsOn() error {
 
 func (p *Port) GetCommModemStatus() (err error, cts_on, dsr_on, ring_on, rlsd_on bool) {
 
-    // The CTS (clear-to-send) signal is on.
-    const MS_CTS_ON = 0x0010
-    // The DSR (data-set-ready) signal is on.
-    const MS_DSR_ON = 0x0020
-    // The ring indicator signal is on.
-    const MS_RING_ON = 0x0040
-    // The RLSD (receive-line-signal-detect) signal is on.
-    const MS_RLSD_ON = 0x0080
+	// The CTS (clear-to-send) signal is on.
+	const MS_CTS_ON = 0x0010
+	// The DSR (data-set-ready) signal is on.
+	const MS_DSR_ON = 0x0020
+	// The ring indicator signal is on.
+	const MS_RING_ON = 0x0040
+	// The RLSD (receive-line-signal-detect) signal is on.
+	const MS_RLSD_ON = 0x0080
 
-	var statusval byte;
+	var statusval byte
 
-	cts_on, dsr_on, ring_on, rlsd_on = false, false, false, false;
+	cts_on, dsr_on, ring_on, rlsd_on = false, false, false, false
 
 	r, _, err := syscall.Syscall(nGetCommModemStatus, 2, uintptr(p.fd), uintptr(unsafe.Pointer(&statusval)), 0)
 	if r == 0 {
 		return err, cts_on, dsr_on, ring_on, rlsd_on
 	}
 
-    if statusval & MS_CTS_ON != 0  {
-        cts_on = true
-    }
-    if statusval & MS_DSR_ON != 0 {
-        dsr_on = true
-    }
-    if statusval & MS_RING_ON != 0  {
-        ring_on = true
-    }
-    if statusval & MS_RLSD_ON != 0  {
-        rlsd_on = true
-    }
+	if statusval&MS_CTS_ON != 0 {
+		cts_on = true
+	}
+	if statusval&MS_DSR_ON != 0 {
+		dsr_on = true
+	}
+	if statusval&MS_RING_ON != 0 {
+		ring_on = true
+	}
+	if statusval&MS_RLSD_ON != 0 {
+		rlsd_on = true
+	}
 
 	return nil, cts_on, dsr_on, ring_on, rlsd_on
 }
