@@ -29,7 +29,7 @@ Example usage:
   package main
 
   import (
-        "github.com/tarm/goserial"
+        "github.com/tarm/serial"
         "log"
   )
 
