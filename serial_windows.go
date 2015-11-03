@@ -9,9 +9,13 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+    "io"
 )
 
 type Port struct {
+    io.Reader
+    io.Writer
+    io.Closer
 	f  *os.File
 	fd syscall.Handle
 	rl sync.Mutex
