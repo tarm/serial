@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-    "io"
+	"io"
 )
 
 func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
@@ -91,9 +91,9 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 }
 
 type Port struct {
-    io.Reader
-    io.Writer
-    io.Closer
+	io.Reader
+	io.Writer
+	io.Closer
 	// We intentionly do not use an "embedded" struct so that we
 	// don't export File
 	f *os.File
