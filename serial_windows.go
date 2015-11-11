@@ -192,22 +192,17 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
 
+	// blocking read by default
+	var timeoutMs int64 = MAXDWORD
+
 	if readTimeout > 0 {
 		// non-blocking read
 		timeoutMs := readTimeout.Nanoseconds() / 1e6
 		if timeoutMs < 1 {
 			timeoutMs = 1
-		} else if timeoutMs > MAXDWORD {
-			timeoutMs = MAXDWORD
+		} else if timeoutMs > MAXDWORD-1 {
+			timeoutMs = MAXDWORD - 1
 		}
-		timeouts.ReadIntervalTimeout = 0
-		timeouts.ReadTotalTimeoutMultiplier = 0
-		timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
-	} else {
-		// blocking read
-		timeouts.ReadIntervalTimeout = MAXDWORD
-		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
-		timeouts.ReadTotalTimeoutConstant = MAXDWORD - 1
 	}
 
 	/* From http://msdn.microsoft.com/en-us/library/aa363190(v=VS.85).aspx
@@ -231,6 +226,10 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 		 If no bytes arrive within the time specified by
 		       ReadTotalTimeoutConstant, ReadFile times out.
 	*/
+
+	timeouts.ReadIntervalTimeout = MAXDWORD
+	timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
+	timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
 
 	r, _, err := syscall.Syscall(nSetCommTimeouts, 2, uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0)
 	if r == 0 {
