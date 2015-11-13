@@ -193,7 +193,7 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	const MAXDWORD = 1<<32 - 1
 
 	// blocking read by default
-	var timeoutMs int64 = MAXDWORD
+	var timeoutMs int64 = MAXDWORD - 1
 
 	if readTimeout > 0 {
 		// non-blocking read
