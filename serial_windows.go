@@ -197,7 +197,7 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 
 	if readTimeout > 0 {
 		// non-blocking read
-		timeoutMs := readTimeout.Nanoseconds() / 1e6
+		timeoutMs = readTimeout.Nanoseconds() / 1e6
 		if timeoutMs < 1 {
 			timeoutMs = 1
 		} else if timeoutMs > MAXDWORD-1 {
