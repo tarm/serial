@@ -51,7 +51,7 @@ func main() {
         }
         
         buf := make([]byte, 128)
-        n, err := s.Read(buf)
+        n, err = s.Read(buf)
         if err != nil {
                 log.Fatal(err)
         }
