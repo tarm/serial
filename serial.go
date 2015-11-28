@@ -79,9 +79,9 @@ type Config struct {
 	Baud        int
 	ReadTimeout time.Duration // Total timeout
 
-	// Size     int // 0 get translated to 8
-	// Parity   SomeNewTypeToGetCorrectDefaultOf_None
-	// StopBits SomeNewTypeToGetCorrectDefaultOf_1
+	Size     DataBitsType
+	Parity   ParityType
+	StopBits StopBitsType
 
 	// RTSFlowControl bool
 	// DTRFlowControl bool
@@ -92,7 +92,7 @@ type Config struct {
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (*Port, error) {
-	return openPort(c.Name, c.Baud, c.ReadTimeout)
+	return openPort(c.Name, c.Baud, byte(c.Size), byte(c.Parity), byte(c.StopBits), c.ReadTimeout)
 }
 
 // Converts the timeout values for Linux / POSIX systems
