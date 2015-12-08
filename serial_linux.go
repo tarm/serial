@@ -9,7 +9,7 @@ import (
 	"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity byte, stopbits byte, readTimeout time.Duration) (p *Port, err error) {
 	var bauds = map[int]uint32{
 		50:      syscall.B50,
 		75:      syscall.B75,
@@ -60,11 +60,45 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		}
 	}()
 
+	// Base settings
+	cflagToUse := syscall.CREAD | syscall.CLOCAL | rate
+	switch databits {
+	case byte(DATABITS_8):
+		cflagToUse |= syscall.CS8
+	case byte(DATABITS_7):
+		cflagToUse |= syscall.CS7
+	case byte(DATABITS_6):
+		cflagToUse |= syscall.CS6
+	case byte(DATABITS_5):
+		cflagToUse |= syscall.CS5
+	default:
+		cflagToUse |= syscall.CS8
+	}
+	// Stop bits settings
+	switch stopbits {
+	case byte(STOPBITS_2):
+		cflagToUse |= syscall.CSTOPB
+	case byte(STOPBITS_15):
+		// Don't know how to set 1.5, use 2!
+		cflagToUse |= syscall.CSTOPB
+	default:
+		// as is, default is 1 bit
+	}
+	// Parity settings
+	switch parity {
+	case byte(PARITY_ODD):
+		cflagToUse |= syscall.PARENB
+		cflagToUse |= syscall.PARODD
+	case byte(PARITY_EVEN):
+		cflagToUse |= syscall.PARENB
+	default:
+		// as is, default is no parity
+	}
 	fd := f.Fd()
 	vmin, vtime := posixTimeoutValues(readTimeout)
 	t := syscall.Termios{
 		Iflag:  syscall.IGNPAR,
-		Cflag:  syscall.CS8 | syscall.CREAD | syscall.CLOCAL | rate,
+		Cflag:  cflagToUse,
 		Cc:     [32]uint8{syscall.VMIN: vmin, syscall.VTIME: vtime},
 		Ispeed: rate,
 		Ospeed: rate,
