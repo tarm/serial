@@ -179,8 +179,7 @@ func setCommState(h syscall.Handle, baud int, databits byte, parity byte, stopbi
 	params.flags[0] |= 0x10 // Assert DSR
 
 	params.BaudRate = uint32(baud)
-	params.ByteSize = databits
-
+	params.ByteSize = 8-databits
 	params.Parity = parity
 
 	params.StopBits = stopbits
