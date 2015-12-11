@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -59,7 +59,7 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		}
 	}()
 
-	if err = setCommState(h, baud); err != nil {
+	if err = setCommState(h, baud, databits, parity, stopbits); err != nil {
 		return
 	}
 	if err = setupComm(h, 64, 64); err != nil {
@@ -171,7 +171,7 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func setCommState(h syscall.Handle, baud int) error {
+func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stopbits StopBits) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
@@ -179,7 +179,34 @@ func setCommState(h syscall.Handle, baud int) error {
 	params.flags[0] |= 0x10 // Assert DSR
 
 	params.BaudRate = uint32(baud)
-	params.ByteSize = 8
+
+	params.ByteSize = databits
+
+	switch parity {
+	case ParityNone:
+		params.Parity = 0
+	case ParityOdd:
+		params.Parity = 1
+	case ParityEven:
+		params.Parity = 2
+	case ParityMark:
+		params.Parity = 3
+	case ParitySpace:
+		params.Parity = 4
+	default:
+		return ErrBadParity
+	}
+
+	switch stopbits {
+	case Stop1:
+		params.StopBits = 0
+	case Stop1Half:
+		params.StopBits = 1
+	case Stop2:
+		params.StopBits = 2
+	default:
+		return ErrBadStopBits
+	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
 	if r == 0 {

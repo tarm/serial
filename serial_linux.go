@@ -9,7 +9,7 @@ import (
 	"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
 	var bauds = map[int]uint32{
 		50:      syscall.B50,
 		75:      syscall.B75,
@@ -60,11 +60,47 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		}
 	}()
 
+	// Base settings
+	cflagToUse := syscall.CREAD | syscall.CLOCAL | rate
+	switch databits {
+	case 5:
+		cflagToUse |= syscall.CS5
+	case 6:
+		cflagToUse |= syscall.CS6
+	case 7:
+		cflagToUse |= syscall.CS7
+	case 8:
+		cflagToUse |= syscall.CS8
+	default:
+		return nil, ErrBadSize
+	}
+	// Stop bits settings
+	switch stopbits {
+	case Stop1:
+		// default is 1 stop bit
+	case Stop2:
+		cflagToUse |= syscall.CSTOPB
+	default:
+		// Don't know how to set 1.5
+		return nil, ErrBadStopBits
+	}
+	// Parity settings
+	switch parity {
+	case ParityNone:
+		// default is no parity
+	case ParityOdd:
+		cflagToUse |= syscall.PARENB
+		cflagToUse |= syscall.PARODD
+	case ParityEven:
+		cflagToUse |= syscall.PARENB
+	default:
+		return nil, ErrBadParity
+	}
 	fd := f.Fd()
 	vmin, vtime := posixTimeoutValues(readTimeout)
 	t := syscall.Termios{
 		Iflag:  syscall.IGNPAR,
-		Cflag:  syscall.CS8 | syscall.CREAD | syscall.CLOCAL | rate,
+		Cflag:  cflagToUse,
 		Cc:     [32]uint8{syscall.VMIN: vmin, syscall.VTIME: vtime},
 		Ispeed: rate,
 		Ospeed: rate,

@@ -17,7 +17,7 @@ import (
 	//"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -72,8 +72,41 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 
 	// Select local mode, turn off parity, set to 8 bits
 	st.c_cflag &= ^C.tcflag_t(C.CSIZE | C.PARENB)
-	st.c_cflag |= (C.CLOCAL | C.CREAD | C.CS8)
-
+	st.c_cflag |= (C.CLOCAL | C.CREAD)
+	// databits
+	switch databits {
+	case 5:
+		st.c_cflag |= C.CS5
+	case 6:
+		st.c_cflag |= C.CS6
+	case 7:
+		st.c_cflag |= C.CS7
+	case 8:
+		st.c_cflag |= C.CS8
+	default:
+		return nil, ErrBadSize
+	}
+	// Parity settings
+	switch parity {
+	case ParityNone:
+		// default is no parity
+	case ParityOdd:
+		st.c_cflag |= C.PARENB
+		st.c_cflag |= C.PARODD
+	case ParityEven:
+		st.c_cflag |= C.PARENB
+	default:
+		return nil, ErrBadParity
+	}
+	// Stop bits settings
+	switch stopbits {
+	case Stop1:
+		// as is, default is 1 bit
+	case Stop2:
+		st.c_cflag |= C.CSTOPB
+	default:
+		return nil, ErrBadStopBits
+	}
 	// Select raw mode
 	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
 	st.c_oflag &= ^C.tcflag_t(C.OPOST)
