@@ -60,25 +60,25 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	}()
 
 	if err = setCommState(h, baud, databits, parity, stopbits); err != nil {
-		return
+		return nil, err
 	}
 	if err = setupComm(h, 64, 64); err != nil {
-		return
+		return nil, err
 	}
 	if err = setCommTimeouts(h, readTimeout); err != nil {
-		return
+		return nil, err
 	}
 	if err = setCommMask(h); err != nil {
-		return
+		return nil, err
 	}
 
 	ro, err := newOverlapped()
 	if err != nil {
-		return
+		return nil, err
 	}
 	wo, err := newOverlapped()
 	if err != nil {
-		return
+		return nil, err
 	}
 	port := new(Port)
 	port.f = f
