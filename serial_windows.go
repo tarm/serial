@@ -3,6 +3,7 @@
 package serial
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -130,7 +131,83 @@ func (p *Port) Read(buf []byte) (int, error) {
 // Discards data written to the port but not transmitted,
 // or data received but not read
 func (p *Port) Flush() error {
-	return purgeComm(p.fd)
+	err := purgeComm(p.fd)
+	clearCommError(p.fd)
+	return err
+}
+
+/*
+This function was taken with minor modifications from the go.bug.st/serial package (https://github.com/bugst/go-serial), and is subject to the conditions of its license (reproduced below):
+
+Copyright (c) 2014, Cristian Maglie.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+*/
+func GetPortsList() ([]string, error) {
+	subKey, err := syscall.UTF16PtrFromString("HARDWARE\\DEVICEMAP\\SERIALCOMM\\")
+	if err != nil {
+		return nil, errors.New("Error enumerating ports")
+	}
+
+	var h syscall.Handle
+	if syscall.RegOpenKeyEx(syscall.HKEY_LOCAL_MACHINE, subKey, 0, syscall.KEY_READ, &h) != nil {
+		return nil, errors.New("Error enumerating ports")
+	}
+	defer syscall.RegCloseKey(h)
+
+	var valuesCount uint32
+	if syscall.RegQueryInfoKey(h, nil, nil, nil, nil, nil, nil, &valuesCount, nil, nil, nil, nil) != nil {
+		return nil, errors.New("Error enumerating ports")
+	}
+
+	list := make([]string, valuesCount)
+	for i := range list {
+		var data [1024]uint16
+		dataSize := uint32(len(data))
+		var name [1024]uint16
+		nameSize := uint32(len(name))
+		if RegEnumValue(h, uint32(i), &name[0], &nameSize, nil, nil, &data[0], &dataSize) != nil {
+			return nil, errors.New("Error enumerating ports")
+		}
+		list[i] = syscall.UTF16ToString(data[:])
+	}
+	return list, nil
+}
+
+func RegEnumValue(key syscall.Handle, index uint32, name *uint16, nameLen *uint32, reserved *uint32, class *uint16, value *uint16, valueLen *uint32) (regerrno error) {
+	r0, _, _ := syscall.Syscall9(nRegEnumValueW, 8, uintptr(key), uintptr(index), uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(nameLen)), uintptr(unsafe.Pointer(reserved)), uintptr(unsafe.Pointer(class)), uintptr(unsafe.Pointer(value)), uintptr(unsafe.Pointer(valueLen)), 0)
+	if r0 != 0 {
+		return syscall.Errno(r0)
+	}
+	return nil
 }
 
 var (
@@ -142,7 +219,9 @@ var (
 	nCreateEvent,
 	nResetEvent,
 	nPurgeComm,
-	nFlushFileBuffers uintptr
+	nFlushFileBuffers,
+	nClearCommError,
+	nRegEnumValueW uintptr
 )
 
 func init() {
@@ -151,6 +230,11 @@ func init() {
 		panic("LoadLibrary " + err.Error())
 	}
 	defer syscall.FreeLibrary(k32)
+	api32, err := syscall.LoadLibrary("advapi32.dll")
+	if err != nil {
+		panic("LoadLibrary " + err.Error())
+	}
+	defer syscall.FreeLibrary(api32)
 
 	nSetCommState = getProcAddr(k32, "SetCommState")
 	nSetCommTimeouts = getProcAddr(k32, "SetCommTimeouts")
@@ -161,6 +245,12 @@ func init() {
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 	nPurgeComm = getProcAddr(k32, "PurgeComm")
 	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
+	nClearCommError = getProcAddr(k32, "ClearCommError")
+	nRegEnumValueW = getProcAddr(api32, "RegEnumValueW")
+}
+
+func clearCommError(h syscall.Handle) error {
+	return processSyscall(nClearCommError, 1, uintptr(h), 0, 0)
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
@@ -171,12 +261,23 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
+func processSyscall(systemMethod, nargs, a1, a2, a3 uintptr) error {
+	result, _, err := syscall.Syscall(systemMethod, nargs, a1, a2, a3)
+	if result == 0 {
+		return err
+	}
+	return nil
+}
+
 func setCommState(h syscall.Handle, baud int) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
 	params.flags[0] = 0x01  // fBinary
 	params.flags[0] |= 0x10 // Assert DSR
+
+	//ADDITION: To help with this problem: http://zachsaw.blogspot.ie/2010/07/net-serialport-woes.html
+	params.flags[1] &= ^byte(0x40)
 
 	params.BaudRate = uint32(baud)
 	params.ByteSize = 8
