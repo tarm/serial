@@ -14,7 +14,6 @@ import (
 	"os"
 	"syscall"
 	"time"
-	//"unsafe"
 )
 
 func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
@@ -55,7 +54,6 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		f.Close()
 		return nil, fmt.Errorf("Unknown baud rate %v", baud)
 	}
-
 	_, err = C.cfsetispeed(&st, speed)
 	if err != nil {
 		f.Close()
