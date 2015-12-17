@@ -3,16 +3,40 @@
 package serial
 
 import (
-	"time"
 	"io/ioutil"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
 	devFolder = "/dev"
-	regexFilter = `^(cu|tty)\.?.*`
 )
+
+
+// Converts the timeout values for Linux / POSIX systems
+// Moved to this new source module from serial.go
+func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
+	const MAXUINT8 = 1<<8 - 1 // 255
+	// set blocking / non-blocking read
+	var minBytesToRead uint8 = 1
+	var readTimeoutInDeci int64
+	if readTimeout > 0 {
+		// EOF on zero read
+		minBytesToRead = 0
+		// convert timeout to deciseconds as expected by VTIME
+		readTimeoutInDeci = (readTimeout.Nanoseconds() / 1e6 / 100)
+		// capping the timeout
+		if readTimeoutInDeci < 1 {
+			// min possible timeout 1 Deciseconds (0.1s)
+			readTimeoutInDeci = 1
+		} else if readTimeoutInDeci > MAXUINT8 {
+			// max possible timeout is 255 deciseconds (25.5s)
+			readTimeoutInDeci = MAXUINT8
+		}
+	}
+	return minBytesToRead, uint8(readTimeoutInDeci)
+}
 
 /*
 This function was taken with minor modifications from the go.bug.st/serial package (https://github.com/bugst/go-serial), and is subject to the conditions of its license (reproduced below):
@@ -49,7 +73,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
-func GetPortsList() ([]string, error) {
+func listPorts() ([]string, error) {
 	files, err := ioutil.ReadDir(devFolder)
 	if err != nil {
 		return nil, err
@@ -62,55 +86,34 @@ func GetPortsList() ([]string, error) {
 			continue
 		}
 
-		// Keep only devices with the correct name
-		match, err := regexp.MatchString(regexFilter, f.Name())
+		// Keep only devices with name matching the port name filter defined for this platform
+		// (discarding placeholder entries for non-existent onboard COM ports)
+		match, err := regexp.MatchString(portNameFilter, f.Name())
 		if err != nil {
 			return nil, err
 		}
-		if !match {
+		if !match || isALegacyPlaceholder(f.Name()) {
 			continue
 		}
 
-		portName := devFolder + "/" + f.Name()
-
-		// Check if serial port is real or is a placeholder serial port "ttySxx"
-		if strings.HasPrefix(f.Name(), "ttyS") {
-			port, err := openPort(portName, 9600, 100)
-			if err != nil {
-				continue
-			} else {
-				port.Close()
-			}
-		}
-
 		// Save serial port in the resulting list
-		ports = append(ports, portName)
+		ports = append(ports, devFolder + "/" + f.Name())
 	}
 
 	return ports, nil
 }
 
-
-// Converts the timeout values for Linux / POSIX systems
-// Moved to this new source module from serial.go
-func posixTimeoutValues(readTimeout time.Duration) (vmin uint8, vtime uint8) {
-	const MAXUINT8 = 1<<8 - 1 // 255
-	// set blocking / non-blocking read
-	var minBytesToRead uint8 = 1
-	var readTimeoutInDeci int64
-	if readTimeout > 0 {
-		// EOF on zero read
-		minBytesToRead = 0
-		// convert timeout to deciseconds as expected by VTIME
-		readTimeoutInDeci = (readTimeout.Nanoseconds() / 1e6 / 100)
-		// capping the timeout
-		if readTimeoutInDeci < 1 {
-			// min possible timeout 1 Deciseconds (0.1s)
-			readTimeoutInDeci = 1
-		} else if readTimeoutInDeci > MAXUINT8 {
-			// max possible timeout is 255 deciseconds (25.5s)
-			readTimeoutInDeci = MAXUINT8
+// Checks whether port entry is just a placeholder -- e.g. reserved for a legacy ISA COM
+// port that doesn't exist
+func isALegacyPlaceholder(portName string) (bool){
+	const legacyComPortPrefix = "ttyS"
+	if strings.HasPrefix(portName, legacyComPortPrefix) {
+		port, err := openPort(devFolder + "/" + portName, 9600, 100)
+		if err != nil {
+			return true;
+		} else {
+			port.Close()
 		}
 	}
-	return minBytesToRead, uint8(readTimeoutInDeci)
+	return false;
 }

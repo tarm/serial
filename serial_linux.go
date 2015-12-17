@@ -6,10 +6,7 @@ import (
 	"os"
 	"syscall"
 	"time"
-	"strings"
-    "unsafe"
-	log "github.com/Sirupsen/logrus"
-	"fmt"
+	"unsafe"
 )
 
 func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {

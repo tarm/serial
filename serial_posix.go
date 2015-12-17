@@ -34,92 +34,26 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		f.Close()
 		return nil, err
 	}
-
-  var bauds = map[int]C.speed_t{
-		50:      C.B50,
-		75:      C.B75,
-		110:     C.B110,
-		134:     C.B134,
-		150:     C.B150,
-		200:     C.B200,
-		300:     C.B300,
-		600:     C.B600,
-		1200:    C.B1200,
-		1800:    C.B1800,
-		2400:    C.B2400,
-		4800:    C.B4800,
-		9600:    C.B9600,
-		19200:   C.B19200,
-		38400:   C.B38400,
-		57600:   C.B57600,
-		115200:  C.B115200,
-		230400:  C.B230400,
-		460800:  C.B460800,
-		500000:  C.B500000,
-		576000:  C.B576000,
-		921600:  C.B921600,
-		1000000: C.B1000000,
-		1152000: C.B1152000,
-		1500000: C.B1500000,
-		2000000: C.B2000000,
-		2500000: C.B2500000,
-		3000000: C.B3000000,
-		3500000: C.B3500000,
-		4000000: C.B4000000,
+	var speed C.speed_t
+	switch baud {
+	case 115200:
+		speed = C.B115200
+	case 57600:
+		speed = C.B57600
+	case 38400:
+		speed = C.B38400
+	case 19200:
+		speed = C.B19200
+	case 9600:
+		speed = C.B9600
+	case 4800:
+		speed = C.B4800
+	case 2400:
+		speed = C.B2400
+	default:
+		f.Close()
+		return nil, fmt.Errorf("Unknown baud rate %v", baud)
 	}
-
-	// var speed C.speed_t
-
-
-	// switch baud {
-	// case 230400:
-	// 	speed = C.B230400
-	// case 115200:
-	// 	speed = C.B115200
-	// case 57600:
-	// 	speed = C.B57600
-	// case 38400:
-	// 	speed = C.B38400
-	// case 19200:
-	// 	speed = C.B19200
-	// case 9600:
-	// 	speed = C.B9600
-	// case 4800:
-	// 	speed = C.B4800
-  // case 2400:
-	// 	speed = C.B2400
-  // case 1800:
-	// 	speed = C.B1800
-  // case 1200:
-	// 	speed = C.B1200
-  // case 600:
-	// 	speed = C.B600
-  // case 300:
-	// 	speed = C.B300
-  // case 200:
-	// 	speed = C.B200
-  // case 150:
-	// 	speed = C.B150
-  // case 134:
-	// 	speed = C.B134
-  // case 110:
-	// 	speed = C.B110
-  // case 75:
-	// 	speed = C.B75
-  // case 50:
-	// 	speed = C.B50
-	// default:
-	// 	f.Close()
-	// 	return nil, fmt.Errorf("Unknown baud rate %v", baud)
-	// }
-
-  speed := bauds[baud]
-
-  if speed == 0 {
-    f.Close()
-  	return nil, fmt.Errorf("Unknown baud rate %v", baud)
-  }
-
 	_, err = C.cfsetispeed(&st, speed)
 	if err != nil {
 		f.Close()

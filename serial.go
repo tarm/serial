@@ -90,11 +90,19 @@ type Config struct {
 	// CRLFTranslate bool
 }
 
-// OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (*Port, error) {
 	return openPort(c.Name, c.Baud, c.ReadTimeout)
 }
 
+// ListPorts returns a list of serial ports identified on the system.
+// The windows implementation queries the registry and should be accurate.
+// The implementation for posix platforms just uses an heuristic approach, applying a regex
+// filter to the contents of /dev. Sensible defaults for linux and OS X have been defined in
+// 'posix_linux.go' and 'posix_darwin.go', respectively. On any other posix platform,
+// all devices matching the overly-inclusive pattern '^tty.*' will be returned.
+func ListPorts() ([]string, error) {
+	return listPorts()
+}
 
 // func SendBreak()
 

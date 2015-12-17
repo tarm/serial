@@ -171,7 +171,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
-func GetPortsList() ([]string, error) {
+func listPorts() ([]string, error) {
 	subKey, err := syscall.UTF16PtrFromString("HARDWARE\\DEVICEMAP\\SERIALCOMM\\")
 	if err != nil {
 		return nil, errors.New("Error enumerating ports")
@@ -194,7 +194,7 @@ func GetPortsList() ([]string, error) {
 		dataSize := uint32(len(data))
 		var name [1024]uint16
 		nameSize := uint32(len(name))
-		if RegEnumValue(h, uint32(i), &name[0], &nameSize, nil, nil, &data[0], &dataSize) != nil {
+		if regEnumValue(h, uint32(i), &name[0], &nameSize, nil, nil, &data[0], &dataSize) != nil {
 			return nil, errors.New("Error enumerating ports")
 		}
 		list[i] = syscall.UTF16ToString(data[:])
@@ -202,7 +202,7 @@ func GetPortsList() ([]string, error) {
 	return list, nil
 }
 
-func RegEnumValue(key syscall.Handle, index uint32, name *uint16, nameLen *uint32, reserved *uint32, class *uint16, value *uint16, valueLen *uint32) (regerrno error) {
+func regEnumValue(key syscall.Handle, index uint32, name *uint16, nameLen *uint32, reserved *uint32, class *uint16, value *uint16, valueLen *uint32) (regerrno error) {
 	r0, _, _ := syscall.Syscall9(nRegEnumValueW, 8, uintptr(key), uintptr(index), uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(nameLen)), uintptr(unsafe.Pointer(reserved)), uintptr(unsafe.Pointer(class)), uintptr(unsafe.Pointer(value)), uintptr(unsafe.Pointer(valueLen)), 0)
 	if r0 != 0 {
 		return syscall.Errno(r0)
