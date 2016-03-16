@@ -51,6 +51,8 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		speed = C.B4800
 	case 2400:
 		speed = C.B2400
+	case 300:
+		speed = C.B300
 	default:
 		f.Close()
 		return nil, fmt.Errorf("Unknown baud rate %v", baud)
