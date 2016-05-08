@@ -3,13 +3,19 @@
 package serial
 
 import (
+	"os"
 	"testing"
 	"time"
 )
 
 func TestConnection(t *testing.T) {
-	c0 := &Config{Name: "/dev/ttyUSB0", Baud: 115200}
-	c1 := &Config{Name: "/dev/ttyUSB1", Baud: 115200}
+	port0 := os.Getenv("PORT0")
+	port1 := os.Getenv("PORT1")
+	if port0 == "" || port1 == "" {
+		t.Skip("Skipping test because PORT0 or PORT1 environment variable is not set")
+	}
+	c0 := &Config{Name: port0, Baud: 115200}
+	c1 := &Config{Name: port1, Baud: 115200}
 
 	s1, err := OpenPort(c0)
 	if err != nil {
