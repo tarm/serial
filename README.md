@@ -40,8 +40,8 @@ import (
 )
 
 func main() {
-        c := &serial.Config{Name: "COM45", Baud: 115200}
-        s, err := serial.OpenPort(c)
+        c := &goserial.Config{Name: "COM45", Baud: 115200}
+        s, err := goserial.OpenPort(c)
         if err != nil {
                 log.Fatal(err)
         }
@@ -70,7 +70,7 @@ is the total timeout the read operation will wait and not the interval
 timeout between two bytes.
 
 ```go
-	c := &serial.Config{Name: "COM45", Baud: 115200, ReadTimeout: time.Second * 5}
+	c := &goserial.Config{Name: "COM45", Baud: 115200, ReadTimeout: time.Second * 5}
 	
 	// In this mode, you will want to suppress error for read
 	// as 0 bytes return EOF error on Linux / POSIX
