@@ -1,4 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/tarm/serial?status.svg)](http://godoc.org/github.com/tarm/serial)
+[![Build Status](https://travis-ci.org/tarm/serial.svg?branch=master)](https://travis-ci.org/tarm/serial)
 
 Serial
 ========
@@ -55,7 +56,7 @@ func main() {
         if err != nil {
                 log.Fatal(err)
         }
-        log.Print("%q", buf[:n])
+        log.Printf("%q", buf[:n])
 }
 ```
 

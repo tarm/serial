@@ -17,7 +17,7 @@ import (
 	//"unsafe"
 )
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
 	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
@@ -51,6 +51,24 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		speed = C.B4800
 	case 2400:
 		speed = C.B2400
+	case 1200:
+		speed = C.B1200
+	case 600:
+		speed = C.B600
+	case 300:
+		speed = C.B300
+	case 200:
+		speed = C.B200
+	case 150:
+		speed = C.B150
+	case 134:
+		speed = C.B134
+	case 110:
+		speed = C.B110
+	case 75:
+		speed = C.B75
+	case 50:
+		speed = C.B50
 	default:
 		f.Close()
 		return nil, fmt.Errorf("Unknown baud rate %v", baud)
@@ -72,8 +90,41 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 
 	// Select local mode, turn off parity, set to 8 bits
 	st.c_cflag &= ^C.tcflag_t(C.CSIZE | C.PARENB)
-	st.c_cflag |= (C.CLOCAL | C.CREAD | C.CS8)
-
+	st.c_cflag |= (C.CLOCAL | C.CREAD)
+	// databits
+	switch databits {
+	case 5:
+		st.c_cflag |= C.CS5
+	case 6:
+		st.c_cflag |= C.CS6
+	case 7:
+		st.c_cflag |= C.CS7
+	case 8:
+		st.c_cflag |= C.CS8
+	default:
+		return nil, ErrBadSize
+	}
+	// Parity settings
+	switch parity {
+	case ParityNone:
+		// default is no parity
+	case ParityOdd:
+		st.c_cflag |= C.PARENB
+		st.c_cflag |= C.PARODD
+	case ParityEven:
+		st.c_cflag |= C.PARENB
+	default:
+		return nil, ErrBadParity
+	}
+	// Stop bits settings
+	switch stopbits {
+	case Stop1:
+		// as is, default is 1 bit
+	case Stop2:
+		st.c_cflag |= C.CSTOPB
+	default:
+		return nil, ErrBadStopBits
+	}
 	// Select raw mode
 	st.c_lflag &= ^C.tcflag_t(C.ICANON | C.ECHO | C.ECHOE | C.ISIG)
 	st.c_oflag &= ^C.tcflag_t(C.OPOST)
@@ -131,6 +182,13 @@ func (p *Port) Read(b []byte) (n int, err error) {
 
 func (p *Port) Write(b []byte) (n int, err error) {
 	return p.f.Write(b)
+}
+
+// Discards data written to the port but not transmitted,
+// or data received but not read
+func (p *Port) Flush() error {
+	_, err := C.tcflush(C.int(p.f.Fd()), C.TCIOFLUSH)
+	return err
 }
 
 func (p *Port) Close() (err error) {

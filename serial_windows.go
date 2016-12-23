@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -59,26 +59,26 @@ func openPort(name string, baud int, readTimeout time.Duration) (p *Port, err er
 		}
 	}()
 
-	if err = setCommState(h, baud); err != nil {
-		return
+	if err = setCommState(h, baud, databits, parity, stopbits); err != nil {
+		return nil, err
 	}
 	if err = setupComm(h, 64, 64); err != nil {
-		return
+		return nil, err
 	}
 	if err = setCommTimeouts(h, readTimeout); err != nil {
-		return
+		return nil, err
 	}
 	if err = setCommMask(h); err != nil {
-		return
+		return nil, err
 	}
 
 	ro, err := newOverlapped()
 	if err != nil {
-		return
+		return nil, err
 	}
 	wo, err := newOverlapped()
 	if err != nil {
-		return
+		return nil, err
 	}
 	port := new(Port)
 	port.f = f
@@ -127,6 +127,12 @@ func (p *Port) Read(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.ro)
 }
 
+// Discards data written to the port but not transmitted,
+// or data received but not read
+func (p *Port) Flush() error {
+	return purgeComm(p.fd)
+}
+
 var (
 	nSetCommState,
 	nSetCommTimeouts,
@@ -134,7 +140,9 @@ var (
 	nSetupComm,
 	nGetOverlappedResult,
 	nCreateEvent,
-	nResetEvent uintptr
+	nResetEvent,
+	nPurgeComm,
+	nFlushFileBuffers uintptr
 )
 
 func init() {
@@ -151,6 +159,8 @@ func init() {
 	nGetOverlappedResult = getProcAddr(k32, "GetOverlappedResult")
 	nCreateEvent = getProcAddr(k32, "CreateEventW")
 	nResetEvent = getProcAddr(k32, "ResetEvent")
+	nPurgeComm = getProcAddr(k32, "PurgeComm")
+	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
@@ -161,7 +171,7 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func setCommState(h syscall.Handle, baud int) error {
+func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stopbits StopBits) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
@@ -169,7 +179,34 @@ func setCommState(h syscall.Handle, baud int) error {
 	params.flags[0] |= 0x10 // Assert DSR
 
 	params.BaudRate = uint32(baud)
-	params.ByteSize = 8
+
+	params.ByteSize = databits
+
+	switch parity {
+	case ParityNone:
+		params.Parity = 0
+	case ParityOdd:
+		params.Parity = 1
+	case ParityEven:
+		params.Parity = 2
+	case ParityMark:
+		params.Parity = 3
+	case ParitySpace:
+		params.Parity = 4
+	default:
+		return ErrBadParity
+	}
+
+	switch stopbits {
+	case Stop1:
+		params.StopBits = 0
+	case Stop1Half:
+		params.StopBits = 1
+	case Stop2:
+		params.StopBits = 2
+	default:
+		return ErrBadStopBits
+	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
 	if r == 0 {
@@ -182,22 +219,17 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
 
+	// blocking read by default
+	var timeoutMs int64 = MAXDWORD - 1
+
 	if readTimeout > 0 {
 		// non-blocking read
-		timeoutMs := readTimeout.Nanoseconds() / 1e6
+		timeoutMs = readTimeout.Nanoseconds() / 1e6
 		if timeoutMs < 1 {
 			timeoutMs = 1
-		} else if timeoutMs > MAXDWORD {
-			timeoutMs = MAXDWORD
+		} else if timeoutMs > MAXDWORD-1 {
+			timeoutMs = MAXDWORD - 1
 		}
-		timeouts.ReadIntervalTimeout = 0
-		timeouts.ReadTotalTimeoutMultiplier = 0
-		timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
-	} else {
-		// blocking read
-		timeouts.ReadIntervalTimeout = MAXDWORD
-		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
-		timeouts.ReadTotalTimeoutConstant = MAXDWORD - 1
 	}
 
 	/* From http://msdn.microsoft.com/en-us/library/aa363190(v=VS.85).aspx
@@ -221,6 +253,10 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 		 If no bytes arrive within the time specified by
 		       ReadTotalTimeoutConstant, ReadFile times out.
 	*/
+
+	timeouts.ReadIntervalTimeout = MAXDWORD
+	timeouts.ReadTotalTimeoutMultiplier = MAXDWORD
+	timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
 
 	r, _, err := syscall.Syscall(nSetCommTimeouts, 2, uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0)
 	if r == 0 {
@@ -248,6 +284,19 @@ func setCommMask(h syscall.Handle) error {
 
 func resetEvent(h syscall.Handle) error {
 	r, _, err := syscall.Syscall(nResetEvent, 1, uintptr(h), 0, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func purgeComm(h syscall.Handle) error {
+	const PURGE_TXABORT = 0x0001
+	const PURGE_RXABORT = 0x0002
+	const PURGE_TXCLEAR = 0x0004
+	const PURGE_RXCLEAR = 0x0008
+	r, _, err := syscall.Syscall(nPurgeComm, 2, uintptr(h),
+		PURGE_TXABORT|PURGE_RXABORT|PURGE_TXCLEAR|PURGE_RXCLEAR, 0)
 	if r == 0 {
 		return err
 	}
