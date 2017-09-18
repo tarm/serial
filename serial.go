@@ -57,6 +57,7 @@ package serial
 
 import (
 	"errors"
+	"os"
 	"time"
 )
 
@@ -137,6 +138,11 @@ func OpenPort(c *Config) (*Port, error) {
 		stop = Stop1
 	}
 	return openPort(c.Name, c.Baud, size, par, stop, c.ReadTimeout)
+}
+
+// GetFile returns the underlying os.File.
+func (p *Port) GetFile() *os.File {
+	return p.f
 }
 
 // Converts the timeout values for Linux / POSIX systems
