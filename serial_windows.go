@@ -110,7 +110,7 @@ func (p *Port) Write(buf []byte) (int, error) {
 
 func (p *Port) Read(buf []byte) (int, error) {
 	if p == nil || p.f == nil {
-		return 0, fmt.Errorf("Invalid port on read %v %v", p, p.f)
+		return 0, fmt.Errorf("Invalid port on read")
 	}
 
 	p.rl.Lock()
