@@ -23,10 +23,6 @@ func TestListRX(t *testing.T) {
 		case name == port1:
 			port1 = ""
 		}
-
-		if _, err := os.Lstat(name); err != nil {
-			t.Errorf("%s: unreachable: %s", name, err)
-		}
 	}
 
 	if port0 != "" {
