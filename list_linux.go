@@ -1,6 +1,9 @@
 package serial
 
 import (
+	"bytes"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 )
@@ -12,9 +15,18 @@ func ListRX() (names []string, err error) {
 		return nil, err
 	}
 
-	names = make([]string, len(matches))
-	for i, m := range matches {
-		names[i] = "/dev/" + filepath.Base(filepath.Dir(m))
+	names = make([]string, 0, len(matches))
+	for _, m := range matches {
+		uevent, err := ioutil.ReadFile(filepath.Clean(m + "/../uevent"))
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		for _, line := range bytes.Split(uevent, []byte{'\n'}) {
+			if bytes.HasPrefix(line, []byte("DEVNAME=")) {
+				names = append(names, "/dev/"+string(line[8:]))
+				break
+			}
+		}
 	}
 
 	sort.Strings(names)
