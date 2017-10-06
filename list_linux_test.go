@@ -9,7 +9,7 @@ func TestListRX(t *testing.T) {
 	port0 := os.Getenv("PORT0")
 	port1 := os.Getenv("PORT1")
 
-	names, err := List()
+	names, err := ListRX()
 	if err != nil {
 		t.Fatal(err)
 	}
