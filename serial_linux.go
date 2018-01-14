@@ -102,8 +102,6 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	t := unix.Termios{
 		Iflag:  unix.IGNPAR,
 		Cflag:  cflagToUse,
-		Ispeed: rate,
-		Ospeed: rate,
 	}
 	t.Cc[unix.VMIN] = vmin
 	t.Cc[unix.VTIME] = vtime
