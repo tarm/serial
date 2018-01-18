@@ -176,7 +176,7 @@ func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stop
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
 	params.flags[0] = 0x01  // fBinary
-	params.flags[0] |= 0x10 // Assert DSR
+	params.flags[0] |= 0x10 // Assert DTR
 
 	params.BaudRate = uint32(baud)
 
