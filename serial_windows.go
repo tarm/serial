@@ -127,6 +127,29 @@ func (p *Port) Read(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.ro)
 }
 
+func (p *Port) SeekRead(buf []byte, idx, l int) (int, error) {
+	if p == nil || p.f == nil {
+		return 0, fmt.Errorf("Invalid port on read")
+	}
+
+	p.rl.Lock()
+	defer p.rl.Unlock()
+
+	if err := resetEvent(p.ro.HEvent); err != nil {
+		return 0, err
+	}
+	var done uint32
+	tbuf := make([]byte, len(buf))
+	err := syscall.ReadFile(p.fd, tbuf, &done, p.ro)
+	if err != nil && err != syscall.ERROR_IO_PENDING {
+		return int(done), err
+	}
+	for i := 0; i < (int)(done); i++ {
+		buf[i+idx] = tbuf[i]
+	}
+	return getOverlappedResult(p.fd, p.ro)
+}
+
 // Discards data written to the port but not transmitted,
 // or data received but not read
 func (p *Port) Flush() error {
