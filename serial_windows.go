@@ -127,11 +127,7 @@ func (p *Port) Read(buf []byte) (int, error) {
 	return getOverlappedResult(p.fd, p.ro)
 }
 
-<<<<<<< HEAD
 func (p *Port) Read2(buf []byte, idx, l int) (int, error) {
-=======
-func (p *Port) SeekRead(buf []byte, idx, l int) (int, error) {
->>>>>>> 5be728c82bd0fd1a9835f434318831746e5283a6
 	if p == nil || p.f == nil {
 		return 0, fmt.Errorf("Invalid port on read")
 	}
@@ -143,16 +139,11 @@ func (p *Port) SeekRead(buf []byte, idx, l int) (int, error) {
 		return 0, err
 	}
 	var done uint32
-<<<<<<< HEAD
 	tbuf := make([]byte, l)
-=======
-	tbuf := make([]byte, len(buf))
->>>>>>> 5be728c82bd0fd1a9835f434318831746e5283a6
 	err := syscall.ReadFile(p.fd, tbuf, &done, p.ro)
 	if err != nil && err != syscall.ERROR_IO_PENDING {
 		return int(done), err
 	}
-<<<<<<< HEAD
 	rcnt, err := getOverlappedResult(p.fd, p.ro)
 
 	for i := 0; i < (int)(rcnt); i++ {
@@ -160,12 +151,6 @@ func (p *Port) SeekRead(buf []byte, idx, l int) (int, error) {
 	}
 
 	return rcnt, err
-=======
-	for i := 0; i < (int)(done); i++ {
-		buf[i+idx] = tbuf[i]
-	}
-	return getOverlappedResult(p.fd, p.ro)
->>>>>>> 5be728c82bd0fd1a9835f434318831746e5283a6
 }
 
 // Discards data written to the port but not transmitted,
