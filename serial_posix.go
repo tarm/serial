@@ -181,6 +181,17 @@ func (p *Port) Read(b []byte) (n int, err error) {
 	return p.f.Read(b)
 }
 
+func (p *Port) Read2(b []byte, idx, l int) (n int, err error) {
+	t := make([]byte, l)
+	rcnt, err := p.f.Read(t)
+
+	for i := 0; i < rcnt; i++ {
+		b[i+idx] = t[i]
+	}
+
+	return rcnt, err
+}
+
 func (p *Port) Write(b []byte) (n int, err error) {
 	return p.f.Write(b)
 }
