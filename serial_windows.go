@@ -146,9 +146,7 @@ func (p *Port) Read2(buf []byte, idx, l int) (int, error) {
 	}
 	rcnt, err := getOverlappedResult(p.fd, p.ro)
 
-	for i := 0; i < (int)(rcnt); i++ {
-		buf[i+idx] = tbuf[i]
-	}
+	copy(buf[idx:], tbuf[:rcnt])
 
 	return rcnt, err
 }
