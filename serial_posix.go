@@ -185,7 +185,7 @@ func (p *Port) Read2(b []byte, idx, l int) (n int, err error) {
 	t := make([]byte, l)
 	rcnt, err := p.f.Read(t)
 
-	copy(buf[idx:], tbuf[:rcnt])
+	copy(b[idx:], t[:rcnt])
 
 	return rcnt, err
 }
