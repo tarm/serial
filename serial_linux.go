@@ -144,11 +144,10 @@ func (p *Port) Write(b []byte) (n int, err error) {
 // Discards data written to the port but not transmitted,
 // or data received but not read
 func (p *Port) Flush() error {
-	const TCFLSH = 0x540B
 	_, _, errno := unix.Syscall(
 		unix.SYS_IOCTL,
 		uintptr(p.f.Fd()),
-		uintptr(TCFLSH),
+		uintptr(unix.TCFLSH),
 		uintptr(unix.TCIOFLUSH),
 	)
 
