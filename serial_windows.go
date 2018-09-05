@@ -142,6 +142,8 @@ var (
 	nCreateEvent,
 	nResetEvent,
 	nPurgeComm,
+	nEscapeCommFunction,
+	nGetCommModemStatus,
 	nFlushFileBuffers uintptr
 )
 
@@ -161,6 +163,80 @@ func init() {
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 	nPurgeComm = getProcAddr(k32, "PurgeComm")
 	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
+	nEscapeCommFunction = getProcAddr(k32, "EscapeCommFunction")
+	nGetCommModemStatus = getProcAddr(k32, "GetCommModemStatus")
+}
+
+func (p *Port) SetDtrOn() error {
+	const SETDTR = 0x0005
+
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), SETDTR, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+func (p *Port) SetDtrOff() error {
+	const CLRDTR = 0x0006
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), CLRDTR, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOff() error {
+	const CLRRTS = 0x0004
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), CLRRTS, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOn() error {
+	const SETRTS = 0x0003
+	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), SETRTS, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) GetCommModemStatus() (err error, cts_on, dsr_on, ring_on, rlsd_on bool) {
+
+	// The CTS (clear-to-send) signal is on.
+	const MS_CTS_ON = 0x0010
+	// The DSR (data-set-ready) signal is on.
+	const MS_DSR_ON = 0x0020
+	// The ring indicator signal is on.
+	const MS_RING_ON = 0x0040
+	// The RLSD (receive-line-signal-detect) signal is on.
+	const MS_RLSD_ON = 0x0080
+
+	var statusval byte
+
+	cts_on, dsr_on, ring_on, rlsd_on = false, false, false, false
+
+	r, _, err := syscall.Syscall(nGetCommModemStatus, 2, uintptr(p.fd), uintptr(unsafe.Pointer(&statusval)), 0)
+	if r == 0 {
+		return err, cts_on, dsr_on, ring_on, rlsd_on
+	}
+
+	if statusval&MS_CTS_ON != 0 {
+		cts_on = true
+	}
+	if statusval&MS_DSR_ON != 0 {
+		dsr_on = true
+	}
+	if statusval&MS_RING_ON != 0 {
+		ring_on = true
+	}
+	if statusval&MS_RLSD_ON != 0 {
+		rlsd_on = true
+	}
+
+	return nil, cts_on, dsr_on, ring_on, rlsd_on
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
