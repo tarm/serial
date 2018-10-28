@@ -109,14 +109,11 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	t.Cc[unix.VMIN] = vmin
 	t.Cc[unix.VTIME] = vtime
 
-	if _, _, errno := unix.Syscall6(
+	if _, _, errno := unix.Syscall(
 		unix.SYS_IOCTL,
 		uintptr(fd),
 		uintptr(unix.TCSETS),
 		uintptr(unsafe.Pointer(&t)),
-		0,
-		0,
-		0,
 	); errno != 0 {
 		return nil, errno
 	}
@@ -157,6 +154,57 @@ func (p *Port) Flush() error {
 		return nil
 	}
 	return errno
+}
+
+func (p *Port) GetStatus() (n uint, err error) {
+	var status uint
+	if _, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMGET),
+		uintptr(unsafe.Pointer(&status)),
+	); errno != 0 {
+		return status, errno
+	} else {
+		return status, nil
+	}
+}
+
+func (p *Port) SetDTR(v byte) (err error) {
+	req := unix.TIOCMBIS
+	if 0 == v {
+		req = unix.TIOCMBIC
+	}
+	var m uint = unix.TIOCM_DTR
+	if _, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(req),
+		uintptr(unsafe.Pointer(&m)),
+	); errno != 0 {
+		return errno
+	} else {
+		return nil
+	}
+}
+
+
+func (p *Port) SetRTS(v byte) (err error) {
+	req := unix.TIOCMBIS
+	if 0 == v {	
+		req = unix.TIOCMBIC
+	}
+	var m uint = unix.TIOCM_RTS
+	if _, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(req),
+		uintptr(unsafe.Pointer(&m)),
+	); errno != 0 {
+		return errno
+	} else {
+		return nil
+	}
 }
 
 func (p *Port) Close() (err error) {
