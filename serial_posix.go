@@ -194,3 +194,13 @@ func (p *Port) Flush() error {
 func (p *Port) Close() (err error) {
 	return p.f.Close()
 }
+
+func (p *Port) SetCTS(on bool) error {
+	panic("Not Implemented")
+	return nil
+}
+
+func (p *Port) SetRTS(on bool) error {
+	panic("Not Implemented")
+	return nil
+}

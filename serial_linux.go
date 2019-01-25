@@ -155,3 +155,48 @@ func (p *Port) Flush() error {
 func (p *Port) Close() (err error) {
 	return p.f.Close()
 }
+
+func (p *Port) setCtrlSignal(sig int, on bool) (err error) {
+	var state int
+	fd := p.f.Fd()
+
+	if _, _, errno := syscall.Syscall6(
+		syscall.SYS_IOCTL,
+		uintptr(fd),
+		uintptr(syscall.TIOCMGET),
+		uintptr(unsafe.Pointer(&state)),
+		0,
+		0,
+		0,
+	); errno != 0 {
+		return errno
+	}
+
+	switch on {
+	case true:
+		state |= sig
+	case false:
+		state &^= sig
+	}
+
+	if _, _, errno := syscall.Syscall6(
+		syscall.SYS_IOCTL,
+		uintptr(fd),
+		uintptr(syscall.TIOCMSET),
+		uintptr(unsafe.Pointer(&state)),
+		0,
+		0,
+		0,
+	); errno != 0 {
+		err = errno
+	}
+	return
+}
+
+func (p *Port) SetCTS(on bool) error {
+	return p.setCtrlSignal(syscall.TIOCM_CTS, on)
+}
+
+func (p *Port) SetRTS(on bool) error {
+	return p.setCtrlSignal(syscall.TIOCM_RTS, on)
+}
