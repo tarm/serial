@@ -20,6 +20,11 @@ type Port struct {
 	wo *syscall.Overlapped
 }
 
+// CommStat contains information about a communications device. CommStat is filled by the ClearCommError function.
+type CommStat struct {
+	Flags, InQue, OutQue uint32
+}
+
 type structDCB struct {
 	DCBlength, BaudRate                            uint32
 	flags                                          [4]byte
@@ -133,6 +138,13 @@ func (p *Port) Flush() error {
 	return purgeComm(p.fd)
 }
 
+// Retrieves information about a communications error and reports the current status of a communications device.
+// The function is called when a communications error occurs,
+// and it clears the device's error flag to enable additional input and output (I/O) operations.
+func (p *Port) ClearCommError(errors *uint32, commStat *CommStat) error {
+	return clearCommError(p.fd, errors, commStat)
+}
+
 var (
 	nSetCommState,
 	nSetCommTimeouts,
@@ -142,7 +154,8 @@ var (
 	nCreateEvent,
 	nResetEvent,
 	nPurgeComm,
-	nFlushFileBuffers uintptr
+	nFlushFileBuffers,
+	nClearCommError uintptr
 )
 
 func init() {
@@ -161,6 +174,7 @@ func init() {
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 	nPurgeComm = getProcAddr(k32, "PurgeComm")
 	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
+	nClearCommError = getProcAddr(k32, "ClearCommError")
 }
 
 func getProcAddr(lib syscall.Handle, name string) uintptr {
@@ -324,4 +338,15 @@ func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int,
 	}
 
 	return n, nil
+}
+
+func clearCommError(h syscall.Handle, errors *uint32, commStat *CommStat) error {
+	r, _, err := syscall.Syscall6(nClearCommError, 3,
+		uintptr(h),
+		uintptr(unsafe.Pointer(errors)),
+		uintptr(unsafe.Pointer(commStat)), 0, 0, 0)
+	if r == 0 {
+		return fmt.Errorf("ClearCommError failed: %v", err)
+	}
+	return nil
 }
