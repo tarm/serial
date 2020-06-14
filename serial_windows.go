@@ -133,6 +133,18 @@ func (p *Port) Flush() error {
 	return purgeComm(p.fd)
 }
 
+// SendBreak sends a break (bus low value) for a given duration.
+// In POSIX and linux implementations the default behavior on zero duration
+// is to send at least 0.25 seconds and not more than 0.5 seconds.
+// To be compatible to linux and unix behavior we use 0.25 seconds
+// as duration if a duration of zero is given.
+func (p *Port) SendBreak(d time.Duration) error {
+    if d.Milliseconds() == 0 {
+        d = 250 * time.Millisecond
+    }
+    return sendCommBread(p.fd, d)
+}
+
 var (
 	nSetCommState,
 	nSetCommTimeouts,
@@ -142,6 +154,8 @@ var (
 	nCreateEvent,
 	nResetEvent,
 	nPurgeComm,
+    nSetCommBreak,
+    nClearCommBreak,
 	nFlushFileBuffers uintptr
 )
 
@@ -160,6 +174,8 @@ func init() {
 	nCreateEvent = getProcAddr(k32, "CreateEventW")
 	nResetEvent = getProcAddr(k32, "ResetEvent")
 	nPurgeComm = getProcAddr(k32, "PurgeComm")
+    nSetCommBreak = getProcAddr(k32, "SetCommBreak")
+    nClearCommBreak = getProcAddr(k32, "ClearCommBreak")
 	nFlushFileBuffers = getProcAddr(k32, "FlushFileBuffers")
 }
 
@@ -301,6 +317,19 @@ func purgeComm(h syscall.Handle) error {
 		return err
 	}
 	return nil
+}
+
+func sendCommBreak(h syscall.Hande, d time.duration) error {
+    r, _, err := syscall.Syscall(nSetCommBreak, 1, uintptr(h), 0, 0)
+    if r == 0 {
+        return err
+    }
+    time.Sleep(d)
+    r, _, err = syscall.Syscall(nClearCommBreak, 1, uintptr(h), 0, 0)
+    if r == 0 {
+        return err
+    }
+    return nil
 }
 
 func newOverlapped() (*syscall.Overlapped, error) {
