@@ -12,17 +12,17 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"syscall"
 	"time"
-	//"unsafe"
+	"unsafe"
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
-	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
+	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return
 	}
-
 	fd := C.int(f.Fd())
 	if C.isatty(fd) != 1 {
 		f.Close()
@@ -35,54 +35,57 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		f.Close()
 		return nil, err
 	}
-	var speed C.speed_t
-	switch baud {
-	case 115200:
-		speed = C.B115200
-	case 57600:
-		speed = C.B57600
-	case 38400:
-		speed = C.B38400
-	case 19200:
-		speed = C.B19200
-	case 9600:
-		speed = C.B9600
-	case 4800:
-		speed = C.B4800
-	case 2400:
-		speed = C.B2400
-	case 1200:
-		speed = C.B1200
-	case 600:
-		speed = C.B600
-	case 300:
-		speed = C.B300
-	case 200:
-		speed = C.B200
-	case 150:
-		speed = C.B150
-	case 134:
-		speed = C.B134
-	case 110:
-		speed = C.B110
-	case 75:
-		speed = C.B75
-	case 50:
-		speed = C.B50
-	default:
-		f.Close()
-		return nil, fmt.Errorf("Unknown baud rate %v", baud)
-	}
 
-	_, err = C.cfsetispeed(&st, speed)
-	if err != nil {
-		f.Close()
-		return nil, err
-	}
-	_, err = C.cfsetospeed(&st, speed)
-	if err != nil {
-		f.Close()
-		return nil, err
+	if runtime.GOOS != "darwin" {
+		var speed C.speed_t
+		switch baud {
+		case 115200:
+			speed = C.B115200
+		case 57600:
+			speed = C.B57600
+		case 38400:
+			speed = C.B38400
+		case 19200:
+			speed = C.B19200
+		case 9600:
+			speed = C.B9600
+		case 4800:
+			speed = C.B4800
+		case 2400:
+			speed = C.B2400
+		case 1200:
+			speed = C.B1200
+		case 600:
+			speed = C.B600
+		case 300:
+			speed = C.B300
+		case 200:
+			speed = C.B200
+		case 150:
+			speed = C.B150
+		case 134:
+			speed = C.B134
+		case 110:
+			speed = C.B110
+		case 75:
+			speed = C.B75
+		case 50:
+			speed = C.B50
+		default:
+			f.Close()
+			return nil, fmt.Errorf("Unknown baud rate %v", baud)
+		}
+
+		_, err = C.cfsetispeed(&st, speed)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+		_, err = C.cfsetospeed(&st, speed)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
 	}
 
 	// Turn off break interrupts, CR->NL, Parity checks, strip, and IXON
@@ -145,7 +148,6 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		return nil, err
 	}
 
-	//fmt.Println("Tweaking", name)
 	r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
 		uintptr(f.Fd()),
 		uintptr(syscall.F_SETFL),
@@ -156,17 +158,18 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		return nil, errors.New(s)
 	}
 
-	/*
-				r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
-			                uintptr(f.Fd()),
-			                uintptr(0x80045402), // IOSSIOSPEED
-			                uintptr(unsafe.Pointer(&baud)));
-			        if e != 0 || r1 != 0 {
-			                s := fmt.Sprint("Baudrate syscall error:", e, r1)
-					f.Close()
-		                        return nil, os.NewError(s)
-				}
-	*/
+	if runtime.GOOS == "darwin" {
+		b := C.speed_t(baud)
+		r1, _, e = syscall.Syscall(syscall.SYS_IOCTL,
+			uintptr(f.Fd()),
+			uintptr(0x80045402), // IOSSIOSPEED
+			uintptr(unsafe.Pointer(&b)))
+		if e != 0 || r1 != 0 {
+			s := fmt.Sprint("Baudrate syscall error:", e, r1)
+			f.Close()
+			return nil, errors.New(s)
+		}
+	}
 
 	return &Port{f: f}, nil
 }
