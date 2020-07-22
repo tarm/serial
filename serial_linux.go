@@ -3,7 +3,6 @@
 package serial
 
 import (
-	"fmt"
 	"os"
 	"time"
 	"unsafe"
@@ -12,46 +11,7 @@ import (
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
-	var bauds = map[int]uint32{
-		50:      unix.B50,
-		75:      unix.B75,
-		110:     unix.B110,
-		134:     unix.B134,
-		150:     unix.B150,
-		200:     unix.B200,
-		300:     unix.B300,
-		600:     unix.B600,
-		1200:    unix.B1200,
-		1800:    unix.B1800,
-		2400:    unix.B2400,
-		4800:    unix.B4800,
-		9600:    unix.B9600,
-		19200:   unix.B19200,
-		38400:   unix.B38400,
-		57600:   unix.B57600,
-		115200:  unix.B115200,
-		230400:  unix.B230400,
-		460800:  unix.B460800,
-		500000:  unix.B500000,
-		576000:  unix.B576000,
-		921600:  unix.B921600,
-		1000000: unix.B1000000,
-		1152000: unix.B1152000,
-		1500000: unix.B1500000,
-		2000000: unix.B2000000,
-		2500000: unix.B2500000,
-		3000000: unix.B3000000,
-		3500000: unix.B3500000,
-		4000000: unix.B4000000,
-	}
-
-	rate, ok := bauds[baud]
-
-	if !ok {
-		return nil, fmt.Errorf("Unrecognized baud rate")
-	}
-
-	f, err := os.OpenFile(name, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0666)
+	f, err := os.OpenFile(name, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +23,7 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	}()
 
 	// Base settings
-	cflagToUse := unix.CREAD | unix.CLOCAL | rate
+	var cflagToUse uint32 = unix.CREAD | unix.CLOCAL | unix.BOTHER | unix.HUPCL
 	switch databits {
 	case 5:
 		cflagToUse |= unix.CS5
@@ -100,19 +60,33 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	}
 	fd := f.Fd()
 	vmin, vtime := posixTimeoutValues(readTimeout)
+	speed := uint32(baud)
 	t := unix.Termios{
 		Iflag:  unix.IGNPAR,
 		Cflag:  cflagToUse,
-		Ispeed: rate,
-		Ospeed: rate,
+		Ispeed: speed,
+		Ospeed: speed,
 	}
 	t.Cc[unix.VMIN] = vmin
 	t.Cc[unix.VTIME] = vtime
 
+	/*
+		Raise DTR (open modem) on open. DTR will be set low
+		again when the connection is closed due to HUPCL.
+		This should guarantee a correct "restart" action
+		on some devices.
+	*/
+	dtrFlag := unix.TIOCM_DTR
+	unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(fd),
+		uintptr(unix.TIOCMBIS), // set/raise DTR pin
+		uintptr(unsafe.Pointer(&dtrFlag)))
+
 	if _, _, errno := unix.Syscall6(
 		unix.SYS_IOCTL,
 		uintptr(fd),
-		uintptr(unix.TCSETS),
+		uintptr(unix.TCSETS2),
 		uintptr(unsafe.Pointer(&t)),
 		0,
 		0,
