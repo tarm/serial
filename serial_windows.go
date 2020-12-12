@@ -209,7 +209,7 @@ func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stop
 	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -259,7 +259,7 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 	timeouts.ReadTotalTimeoutConstant = uint32(timeoutMs)
 
 	r, _, err := syscall.Syscall(nSetCommTimeouts, 2, uintptr(h), uintptr(unsafe.Pointer(&timeouts)), 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -267,7 +267,7 @@ func setCommTimeouts(h syscall.Handle, readTimeout time.Duration) error {
 
 func setupComm(h syscall.Handle, in, out int) error {
 	r, _, err := syscall.Syscall(nSetupComm, 3, uintptr(h), uintptr(in), uintptr(out))
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -276,7 +276,7 @@ func setupComm(h syscall.Handle, in, out int) error {
 func setCommMask(h syscall.Handle) error {
 	const EV_RXCHAR = 0x0001
 	r, _, err := syscall.Syscall(nSetCommMask, 2, uintptr(h), EV_RXCHAR, 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -284,7 +284,7 @@ func setCommMask(h syscall.Handle) error {
 
 func resetEvent(h syscall.Handle) error {
 	r, _, err := syscall.Syscall(nResetEvent, 1, uintptr(h), 0, 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -297,7 +297,7 @@ func purgeComm(h syscall.Handle) error {
 	const PURGE_RXCLEAR = 0x0008
 	r, _, err := syscall.Syscall(nPurgeComm, 2, uintptr(h),
 		PURGE_TXABORT|PURGE_RXABORT|PURGE_TXCLEAR|PURGE_RXCLEAR, 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return err
 	}
 	return nil
@@ -306,7 +306,7 @@ func purgeComm(h syscall.Handle) error {
 func newOverlapped() (*syscall.Overlapped, error) {
 	var overlapped syscall.Overlapped
 	r, _, err := syscall.Syscall6(nCreateEvent, 4, 0, 1, 0, 0, 0, 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return nil, err
 	}
 	overlapped.HEvent = syscall.Handle(r)
@@ -319,7 +319,7 @@ func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int,
 		uintptr(h),
 		uintptr(unsafe.Pointer(overlapped)),
 		uintptr(unsafe.Pointer(&n)), 1, 0, 0)
-	if r == 0 {
+	if r == 0 || err != syscall.Errno(0) {
 		return n, err
 	}
 
