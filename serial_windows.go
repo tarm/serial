@@ -133,8 +133,7 @@ func (p *Port) Flush() error {
 	return purgeComm(p.fd)
 }
 
-var (
-	nSetCommState,
+var nSetCommState,
 	nSetCommTimeouts,
 	nSetCommMask,
 	nSetupComm,
@@ -143,7 +142,6 @@ var (
 	nResetEvent,
 	nPurgeComm,
 	nFlushFileBuffers uintptr
-)
 
 func init() {
 	k32, err := syscall.LoadLibrary("kernel32.dll")

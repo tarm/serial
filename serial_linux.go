@@ -12,7 +12,7 @@ import (
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
-	var bauds = map[int]uint32{
+	bauds := map[int]uint32{
 		50:      unix.B50,
 		75:      unix.B75,
 		110:     unix.B110,
@@ -129,7 +129,7 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 }
 
 type Port struct {
-	// We intentionly do not use an "embedded" struct so that we
+	// We intentionally do not use an "embedded" struct so that we
 	// don't export File
 	f *os.File
 }

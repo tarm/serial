@@ -14,7 +14,6 @@ import (
 	"os"
 	"syscall"
 	"time"
-	//"unsafe"
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
@@ -145,7 +144,6 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		return nil, err
 	}
 
-	//fmt.Println("Tweaking", name)
 	r1, _, e := syscall.Syscall(syscall.SYS_FCNTL,
 		uintptr(f.Fd()),
 		uintptr(syscall.F_SETFL),
@@ -172,7 +170,7 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 }
 
 type Port struct {
-	// We intentionly do not use an "embedded" struct so that we
+	// We intentionally do not use an "embedded" struct so that we
 	// don't export File
 	f *os.File
 }

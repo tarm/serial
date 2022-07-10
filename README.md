@@ -25,7 +25,7 @@ parity, no hardware flow control, and no software flow control.  This
 works fine for many real devices and many faux serial devices
 including usb-to-serial converters and bluetooth serial ports.
 
-You may Read() and Write() simulantiously on the same connection (from
+You may Read() and Write() simultaneously on the same connection (from
 different goroutines).
 
 Usage
@@ -45,12 +45,12 @@ func main() {
         if err != nil {
                 log.Fatal(err)
         }
-        
+
         n, err := s.Write([]byte("test"))
         if err != nil {
                 log.Fatal(err)
         }
-        
+
         buf := make([]byte, 128)
         n, err = s.Read(buf)
         if err != nil {
@@ -71,9 +71,9 @@ timeout between two bytes.
 
 ```go
 	c := &serial.Config{Name: "COM45", Baud: 115200, ReadTimeout: time.Second * 5}
-	
+
 	// In this mode, you will want to suppress error for read
-	// as 0 bytes return EOF error on Linux / POSIX
+	// as 0 bytes return EOF error on Linux/POSIX
 	n, _ = s.Read(buf)
 ```
 

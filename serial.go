@@ -1,5 +1,5 @@
 /*
-Goserial is a simple go package to allow you to read and write from
+Serial is a simple go package to allow you to read and write from
 the serial port as a stream of bytes.
 
 It aims to have the same API on all platforms, including windows.  As
@@ -21,7 +21,7 @@ parity, no hardware flow control, and no software flow control.  This
 works fine for many real devices and many faux serial devices
 including usb-to-serial converters and bluetooth serial ports.
 
-You may Read() and Write() simulantiously on the same connection (from
+You may Read() and Write() simultaneously on the same connection (from
 different goroutines).
 
 Example usage:
@@ -62,8 +62,10 @@ import (
 
 const DefaultSize = 8 // Default value for Config.Size
 
-type StopBits byte
-type Parity byte
+type (
+	StopBits byte
+	Parity   byte
+)
 
 const (
 	Stop1     StopBits = 1
