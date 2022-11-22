@@ -5,6 +5,7 @@ package serial
 import (
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -140,6 +141,22 @@ func (p *Port) Read(b []byte) (n int, err error) {
 
 func (p *Port) Write(b []byte) (n int, err error) {
 	return p.f.Write(b)
+}
+
+func (p *Port) SetWriteDeadline(t time.Time) (err error) {
+	return p.f.SetWriteDeadline(t)
+}
+
+func (p *Port) SetDeadline(t time.Time) (err error) {
+	return p.f.SetDeadline(t)
+}
+
+func (p *Port) SetReadDeadline(t time.Time) (err error) {
+	return p.f.SetReadDeadline(t)
+}
+
+func (p *Port) SyscallConn() (syscall.RawConn, error) {
+	return p.f.SyscallConn()
 }
 
 // Discards data written to the port but not transmitted,
