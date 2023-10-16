@@ -1,14 +1,23 @@
+//go:build linux
 // +build linux
 
 package serial
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"time"
 	"unsafe"
 
+	"github.com/gofrs/flock"
 	"golang.org/x/sys/unix"
+)
+
+var (
+	ErrAlreadyLocked = errors.New("this port already has locked file")
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
@@ -46,17 +55,36 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	}
 
 	rate, ok := bauds[baud]
-
 	if !ok {
-		return nil, fmt.Errorf("Unrecognized baud rate")
+		return nil, fmt.Errorf("unrecognized baud rate")
 	}
 
-	f, err := os.OpenFile(name, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0666)
+	fpath, err := filepath.Abs(name)
+	if err != nil {
+		return nil, err
+	}
+	lockdir := "/var/lock"
+	lockpath := path.Join(lockdir, fmt.Sprintf("%s_%s.lock", filepath.Base(fpath), shortHash(fpath)))
+	lock := flock.New(lockpath)
+
+	locked, err := lock.TryLock()
+	if err != nil {
+		return nil, err
+	}
+	if !locked {
+		return nil, ErrAlreadyLocked
+	}
+
+	f, err := os.OpenFile(fpath, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0666)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
+		if err != nil {
+			lock.Unlock()
+			os.Remove(lockpath)
+		}
 		if err != nil && f != nil {
 			f.Close()
 		}
@@ -125,13 +153,14 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		return
 	}
 
-	return &Port{f: f}, nil
+	return &Port{f: f, lock: lock}, nil
 }
 
 type Port struct {
 	// We intentionly do not use an "embedded" struct so that we
 	// don't export File
-	f *os.File
+	f    *os.File
+	lock *flock.Flock
 }
 
 func (p *Port) Read(b []byte) (n int, err error) {
@@ -160,5 +189,7 @@ func (p *Port) Flush() error {
 }
 
 func (p *Port) Close() (err error) {
+	p.lock.Unlock()
+	os.Remove(p.lock.Path())
 	return p.f.Close()
 }

@@ -1,12 +1,40 @@
+//go:build linux
 // +build linux
 
+/*
+How to run tests
+// socat virtual serial ports
+socat -d -d pty,rawer,echo=0,link=/tmp/ttyV0 pty,rawer,echo=0,link=/tmp/ttyV1
+// run test
+PORT0=/tmp/ttyV0 PORT1=/tmp/ttyV1 go test -tags=linux -p 1 -v .
+*/
 package serial
 
 import (
+	"errors"
 	"os"
 	"testing"
 	"time"
 )
+
+func TestLocking(t *testing.T) {
+	port0 := "/tmp/ttyV0" //os.Getenv("PORT0")
+	if port0 == "" {
+		t.Skip("Skipping test because PORT0 environment variable is not set")
+	}
+	c0 := &Config{Name: port0, Baud: 115200}
+
+	s1, err := OpenPort(c0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = OpenPort(c0)
+	if !errors.Is(ErrAlreadyLocked, err) {
+		t.Fatal(err)
+	}
+	s1.Close()
+}
 
 func TestConnection(t *testing.T) {
 	port0 := os.Getenv("PORT0")
@@ -66,4 +94,7 @@ func TestConnection(t *testing.T) {
 	if c >= exp {
 		t.Fatalf("Expected less than %v read, got %v", exp, c)
 	}
+	// these close() may cause some issues
+	// s1.Close()
+	// s2.Close()
 }
